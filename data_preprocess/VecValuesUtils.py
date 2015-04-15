@@ -26,6 +26,10 @@ MAX_BOUGHT_BEHAVIOR_COUNT = 120236
 # 说明：从正样本中选取user_id与item_id，在建立向量的过程中只根据12-18日之前的数据，
 # 即在数据库查询语句中添加时间戳《12-18-00的条件
 
+
+data_dict = {'item_data': {}, 'user_data': {}}
+
+
 def cal_item_popularity(item_id, stoptime_str='2014-12-19 00'):
     """
     计算商品热门度，由于被除数都一样所以不再除以被购买商品总数，改为count的sigmoid形式
@@ -36,12 +40,16 @@ def cal_item_popularity(item_id, stoptime_str='2014-12-19 00'):
     """
     from data_preprocess.MongoDB_Utils import MongodbUtils
 
-    mongodb = MongodbUtils(db_address, 27017)
-    train_user = mongodb.get_db().train_user
-    stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
-    bought_count = train_user.find({'item_id': item_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
-    popularity = 1 / (1 + math.e ** (-bought_count)) - 0.5
-    return popularity
+    if data_dict['item_data'].has_key(item_id):
+        return data_dict['item_data'][item_id]['popularity']
+    else:
+        mongodb = MongodbUtils(db_address, 27017)
+        train_user = mongodb.get_db().train_user
+        stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
+        bought_count = train_user.find({'item_id': item_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
+        popularity = 1 / (1 + math.e ** (-bought_count)) - 0.5
+        data_dict['item_data'][item_id] = {'popularity': popularity}
+        return popularity
 
 
 def cal_user_desire(user_id, stoptime_str='2014-12-19 00'):
@@ -52,14 +60,22 @@ def cal_user_desire(user_id, stoptime_str='2014-12-19 00'):
     """
     from data_preprocess.MongoDB_Utils import MongodbUtils
 
-    mongodb = MongodbUtils(db_address, 27017)
-    train_user = mongodb.get_db().train_user
-    stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
-    max_count = train_user.find({"user_id": user_id, "time": {"$lt": stoptime}}).count()
-    bought_count = train_user.find({"user_id": user_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
-    if max_count == 0:
-        return 0
-    return float(bought_count) / float(max_count)
+    if data_dict['user_data'].has_key(user_id):
+        max_count = data_dict['user_data'][user_id]['max_count']
+        bought_count = data_dict['user_data'][user_id]['bought_count']
+        if max_count == 0:
+            return 0
+        return float(bought_count) / float(max_count)
+    else:
+        mongodb = MongodbUtils(db_address, 27017)
+        train_user = mongodb.get_db().train_user
+        stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
+        max_count = train_user.find({"user_id": user_id, "time": {"$lt": stoptime}}).count()
+        bought_count = train_user.find({"user_id": user_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
+        data_dict['user_data'][user_id] = {'max_count': max_count, 'bought_count': bought_count}
+        if max_count == 0:
+            return 0
+        return float(bought_count) / float(max_count)
 
 
 def cal_useritem_behavior_rate(user_id, item_id, stoptime_str='2014-12-19 00'):
@@ -75,8 +91,14 @@ def cal_useritem_behavior_rate(user_id, item_id, stoptime_str='2014-12-19 00'):
     mongodb = MongodbUtils(db_address, 27017)
     train_user = mongodb.get_db().train_user
     stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
-    max_count = train_user.find({"user_id": user_id, "time": {"$lt": stoptime}}).count()
-    item_behavior_count = train_user.find({"user_id": user_id, "item_id": item_id, "time": {"$lt": stoptime}}).count()
+    if data_dict['user_data'].has_key(user_id):
+        max_count = data_dict['user_data'][user_id]['max_count']
+    else:
+        max_count = train_user.find({"user_id": user_id, "time": {"$lt": stoptime}}).count()
+        bought_count = train_user.find({"user_id": user_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
+        data_dict['user_data'][user_id] = {'max_count': max_count, 'bought_count': bought_count}
+    item_behavior_count = train_user.find(
+        {"user_id": user_id, "item_id": item_id, "time": {"$lt": stoptime}}).count()
     if max_count == 0:
         return 0
     return float(item_behavior_count) / float(max_count)
@@ -191,7 +213,7 @@ def cal_vecvalues_tail(fin_path='../data/train_set.csv', fout_path='../data/vecv
         # datastr = tag + ',' + str(popularity) + ',' + str(desire) + ',' + str(behavior_rate) + '\n'
         fout.write(datastr)
         count += 1
-        if count % 2000 == 0:
+        if count % 1000 == 0:
             logger.info('calculated count:\t%s' % count)
     logger.info('cal_vecvalues_tail done, result path=' + fout_path)
 
@@ -239,7 +261,7 @@ def get_predict_vecdata(timerange=('2014-12-16', '2014-12-19'),
     from data_preprocess import generate_userset
     import MySQLdb
 
-    connect = MySQLdb.connect(host='127.0.0.1',
+    connect = MySQLdb.connect(host='10.108.192.119',
                               user='tianchi_data',
                               passwd='tianchi_data',
                               db='tianchi')
@@ -271,7 +293,7 @@ if __name__ == '__main__':
 
     # combine_data()
 
-    get_predict_vecdata(timerange=('2014-12-18', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
+    get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
                         predict_vectail_path='../data/predict/predict_vectail.csv')
 
     # connect = MySQLdb.connect(host='127.0.0.1',

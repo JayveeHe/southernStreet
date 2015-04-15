@@ -8,7 +8,7 @@ import sys
 import MySQLdb
 from datetime import datetime
 # from data_preprocess.MongoDB_Utils import MongodbUtils
-#from log.get_logger import logger
+# from log.get_logger import logger
 
 # project path
 project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
@@ -97,7 +97,7 @@ def generate_train_set(connect,
         # 正样本
         tag = 1
         sql = 'select distinct user_id, item_id from train_user where behavior_type=4 and time>%s and time <=%s;' % (
-        positive_timestamp_start, positive_timestamp_end)
+            positive_timestamp_start, positive_timestamp_end)
         logger.debug('positive sql: %s' % (sql))
         cursor.execute(sql)
         result = cursor.fetchall()
@@ -136,13 +136,13 @@ def generate_train_set(connect,
 
         # Step 1: 获得PK的最小值和PK的最大值
         sql_PK_min = 'select record_id from train_user where time>%s and time <=%s order by time limit 1;' % (
-        negative_timestamp_start, negative_timestamp_end)
+            negative_timestamp_start, negative_timestamp_end)
         cursor.execute(sql_PK_min)
         result = cursor.fetchall()
         PK_min = int(result[0][0])
         logger.debug('min Primary Key = %s' % (PK_min))
         sql_PK_max = 'select record_id from train_user where time>%s and time <=%s order by time DESC limit 1;' % (
-        negative_timestamp_start, negative_timestamp_end)
+            negative_timestamp_start, negative_timestamp_end)
         cursor.execute(sql_PK_max)
         result = cursor.fetchall()
         PK_max = int(result[0][0])
@@ -189,7 +189,7 @@ def generate_test_set(connect,
     with open(f_train_set, 'w') as fout:
         fout.write('user_id,item_id\n')
         sql = 'select distinct user_id, item_id from train_user where behavior_type=4 and time>%s and time<=%s;' % (
-        timerange_start, timerange_end)
+            timerange_start, timerange_end)
         logger.debug('sql: %s' % (sql))
         cursor.execute(sql)
         result = cursor.fetchall()
@@ -226,20 +226,22 @@ def generate_predict_set(connect,
     with open(f_train_set, 'w') as fout:
         fout.write('user_id,item_id,tag\n')
         sql = 'select distinct user_id, item_id from train_user where time>%s and time<=%s;' % (
-                                                                                               timerange_start, timerange_end)
+            timerange_start, timerange_end)
         logger.debug('sql: %s' % (sql))
         cursor.execute(sql)
         result = cursor.fetchall()
-        logger.debug('start generate test set')
+        logger.debug('start generate predict set')
+        count = 0
         for [user_id, item_id] in result:
             fout.write('%s,%s,%s\n' % (user_id, item_id, -1))
-        logger.debug('success generate test set')
+            count += 1
+        logger.debug('success generate predict set, set sum = ' + str(count))
 
     cursor.close()
 
 
 if __name__ == '__main__':
-    #generate_positive_userset('../data/positive_userset_' + str(datetime.now().strftime('%Y-%m-%d-%H-%M-%S')) + '.json')
+    # generate_positive_userset('../data/positive_userset_' + str(datetime.now().strftime('%Y-%m-%d-%H-%M-%S')) + '.json')
 
     # 生成训练集
     connect = MySQLdb.connect(host='127.0.0.1',
