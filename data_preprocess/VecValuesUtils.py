@@ -8,6 +8,8 @@ import os
 import sys
 
 # project path
+
+
 project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 data_path = '%s/data' % (project_path)
 
@@ -30,7 +32,7 @@ MAX_BOUGHT_BEHAVIOR_COUNT = 120236
 data_dict = {'item_data': {}, 'user_data': {}}
 
 
-def cal_item_popularity(item_id, stoptime_str='2014-12-19 00'):
+def cal_item_popularity(mongo_train_user_collection, item_id, stoptime_str='2014-12-19 00'):
     """
     计算商品热门度，由于被除数都一样所以不再除以被购买商品总数，改为count的sigmoid形式
 
@@ -38,13 +40,12 @@ def cal_item_popularity(item_id, stoptime_str='2014-12-19 00'):
     :param stoptime:格式例如：'2014-12-18 00'
     :return:float类型的商品热度
     """
-    from data_preprocess.MongoDB_Utils import MongodbUtils
 
     if data_dict['item_data'].has_key(item_id):
         return data_dict['item_data'][item_id]['popularity']
     else:
-        mongodb = MongodbUtils(db_address, 27017)
-        train_user = mongodb.get_db().train_user
+        # mongodb = MongodbUtils(db_address, 27017)
+        train_user = mongo_train_user_collection
         stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
         bought_count = train_user.find({'item_id': item_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
         popularity = 1 / (1 + math.e ** (-bought_count)) - 0.5
@@ -52,13 +53,12 @@ def cal_item_popularity(item_id, stoptime_str='2014-12-19 00'):
         return popularity
 
 
-def cal_user_desire(user_id, stoptime_str='2014-12-19 00'):
+def cal_user_desire(mongo_train_user_collection, user_id, stoptime_str='2014-12-19 00'):
     """
     计算用户购买欲
     :param user_id:
     :return:float类型的用户购买欲
     """
-    from data_preprocess.MongoDB_Utils import MongodbUtils
 
     if data_dict['user_data'].has_key(user_id):
         max_count = data_dict['user_data'][user_id]['max_count']
@@ -67,8 +67,7 @@ def cal_user_desire(user_id, stoptime_str='2014-12-19 00'):
             return 0
         return float(bought_count) / float(max_count)
     else:
-        mongodb = MongodbUtils(db_address, 27017)
-        train_user = mongodb.get_db().train_user
+        train_user = mongo_train_user_collection
         stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
         max_count = train_user.find({"user_id": user_id, "time": {"$lt": stoptime}}).count()
         bought_count = train_user.find({"user_id": user_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
@@ -78,7 +77,7 @@ def cal_user_desire(user_id, stoptime_str='2014-12-19 00'):
         return float(bought_count) / float(max_count)
 
 
-def cal_useritem_behavior_rate(user_id, item_id, stoptime_str='2014-12-19 00'):
+def cal_useritem_behavior_rate(mongo_train_user_collection, user_id, item_id, stoptime_str='2014-12-19 00'):
     """
     计算指定用户对指定商品的操作数占该用户总操作数的比重
     :param user_id:
@@ -86,10 +85,9 @@ def cal_useritem_behavior_rate(user_id, item_id, stoptime_str='2014-12-19 00'):
     :return:
     """
     # logger.info('cal_useritem_behavior_rate: user_id = ' + user_id + '\titem_id = ' + item_id)
-    from data_preprocess.MongoDB_Utils import MongodbUtils
 
-    mongodb = MongodbUtils(db_address, 27017)
-    train_user = mongodb.get_db().train_user
+    # mongodb = MongodbUtils(db_address, 27017)
+    train_user = mongo_train_user_collection
     stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
     if data_dict['user_data'].has_key(user_id):
         max_count = data_dict['user_data'][user_id]['max_count']
@@ -187,7 +185,8 @@ def cal_user_behavior(connect,
     cursor.close()
 
 
-def cal_vecvalues_tail(fin_path='../data/train_set.csv', fout_path='../data/vecvalues_tail.csv'):
+def cal_vecvalues_tail(mongo_train_user_collection, fin_path='../data/train_set.csv',
+                       fout_path='../data/vecvalues_tail.csv'):
     """
     计算后三维的向量，需要mongodb支持
     :param fin_path:样本集csv路径
@@ -206,9 +205,9 @@ def cal_vecvalues_tail(fin_path='../data/train_set.csv', fout_path='../data/vecv
         user_id = data[0]
         item_id = data[1]
         tag = data[2]
-        popularity = cal_item_popularity(item_id)
-        desire = cal_user_desire(user_id)
-        behavior_rate = cal_useritem_behavior_rate(user_id, item_id)
+        popularity = cal_item_popularity(mongo_train_user_collection, item_id)
+        desire = cal_user_desire(mongo_train_user_collection, user_id)
+        behavior_rate = cal_useritem_behavior_rate(mongo_train_user_collection, user_id, item_id)
         datastr = '%s,%s,%s,%s\n' % (tag, popularity, desire, behavior_rate)
         # datastr = tag + ',' + str(popularity) + ',' + str(desire) + ',' + str(behavior_rate) + '\n'
         fout.write(datastr)
@@ -260,16 +259,20 @@ def get_predict_vecdata(timerange=('2014-12-16', '2014-12-19'),
                         svm_output_path='%s/predict/svmdata.dat' % (data_path)):
     from data_preprocess import generate_userset
     import MySQLdb
+    from data_preprocess.MongoDB_Utils import MongodbUtils
+
 
     connect = MySQLdb.connect(host='10.108.192.119',
                               user='tianchi_data',
                               passwd='tianchi_data',
                               db='tianchi')
 
+    mongo_utils = MongodbUtils(db_address, 27017)
+    train_user = mongo_utils.get_db().train_user
     # predict_set_path = '%s/temp/predict_set.csv' % (data_path)
     generate_userset.generate_predict_set(connect, timerange, predict_set_path)
     # predict_vectail_path = '%s/temp/predict_vectail.csv' % (data_path)
-    cal_vecvalues_tail(predict_set_path, predict_vectail_path)
+    cal_vecvalues_tail(train_user, predict_set_path, predict_vectail_path)
     predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
     cal_user_behavior(connect, predict_set_path)
     combine_data(predict_vecbehavior_path, predict_vectail_path, csv_output_path, svm_output_path)
