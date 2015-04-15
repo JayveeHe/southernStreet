@@ -133,6 +133,7 @@ def cal_positive_userset_vecvalues(fin_path='../data/positive_userset_2015-04-12
 
 @Timer
 def cal_user_behavior(connect,
+                      timerange,
                       f_train_set='%s/train_set.csv' % (data_path)):
     """
     计算时间加权后的用户行为
@@ -145,12 +146,13 @@ def cal_user_behavior(connect,
 
     Args:
         connect: MySQLdb.connect(), 数据库连接句柄
+        timerange: 时间筛选条件
         f_train_set: string, 训练集结果文件
                  ------ content ------
                 | user_id,item_id,tag |
                  ---------------------
     Returns:
-        None
+        f_output: sting，输出文件
     """
     import arrow
     from math import exp
@@ -158,6 +160,7 @@ def cal_user_behavior(connect,
     f_output = f_train_set.replace('.csv', '_calUserBehavior.csv')  # 输出文件的名称
     predict_timestamp = arrow.get('2014-12-19').timestamp
     time_atten = 3600 * 48  # 时间戳的衰减因子, exp(-1/a * delta_t)
+    (timerange_start, timerange_end) = map(lambda elem: arrow.get(elem).timestamp, timerange)
     cursor = connect.cursor()
 
     with open(f_train_set, 'r') as fin, open(f_output, 'w') as fout:
@@ -168,7 +171,7 @@ def cal_user_behavior(connect,
         for in_line in fin:
             in_cols = in_line.strip().split(',')
             [user_id, item_id, tag] = in_cols
-            sql = 'select behavior_type, time from train_user where user_id=%s and item_id=%s;' % (user_id, item_id)
+            sql = 'select behavior_type, time from train_user where user_id=%s and item_id=%s and time>%s and time<=%s;' % (user_id, item_id, timerange_start, timerange_end)
             # logger.debug('sql: %s' % (sql))
             cursor.execute(sql)
             result = cursor.fetchall()
@@ -183,6 +186,7 @@ def cal_user_behavior(connect,
                     counter, user_id, item_id, time_weights, tag))
 
     cursor.close()
+    return f_output
 
 
 def cal_vecvalues_tail(mongo_train_user_collection, fin_path='../data/train_set.csv',
@@ -296,8 +300,25 @@ if __name__ == '__main__':
 
     # combine_data()
 
-    get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
-                        predict_vectail_path='../data/predict/predict_vectail.csv')
+    #get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
+    #                    predict_vectail_path='../data/predict/predict_vectail.csv')
+    import MySQLdb
+    from data_preprocess import generate_userset
+    connect = MySQLdb.connect(host='127.0.0.1',
+        user='tianchi_data',
+        passwd='tianchi_data',
+        db='tianchi')
+    from data_preprocess.MongoDB_Utils import MongodbUtils    
+    mongo_utils = MongodbUtils(db_address, 27017)
+    train_user = mongo_utils.get_db().train_user
+    generate_userset.generate_train_set(connect, ('2014-12-18', '2014-12-19'), ('2014-12-18', '2014-12-19'),r'../data/train_set_1819.csv')
+    cal_vecvalues_tail(train_user,r'../data/train_set_1819.csv', r'../data/temp/tail.csv')
+    # predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
+    cal_user_behavior(connect,('2014-11-17','2014-12-18'), r'../data/train_set_1819.csv')
+    combine_data(r'../data/train_set_1819_calUserBehavior.csv',
+        r'../data/temp/tail.csv',
+        r'../data/temp/combined_out.csv',
+        r'../data/temp/svm_out.csv')
 
     # connect = MySQLdb.connect(host='127.0.0.1',
     # user='tianchi_data',
