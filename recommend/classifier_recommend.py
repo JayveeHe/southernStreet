@@ -21,7 +21,7 @@ from recommend.intersection import intersect
 def train_svm(clf,
               f_train_set='%s/train_combined_vec_data.csv' % (data_path)):
     """
-    训练分类器
+    训练SVM分类器
 
     Args:
         clf: 分类器
@@ -37,7 +37,7 @@ def train_svm(clf,
 
     # 训练
     clf.fit(X, y)
-    logger.info('SVM classifier fit Done. Best params are %s with a best score of %0.2f' % (clf.best_params_, clf.best_score_))
+    logger.info('SVM classifier(%s) fit Done. Best params are %s with a best score of %0.2f' % (clf, clf.best_params_, clf.best_score_))
 
     return clf
 
@@ -46,7 +46,7 @@ def train_svm(clf,
 def train_LR(clf,
               f_train_set='%s/train_combined_vec_data.csv' % (data_path)):
     """
-    训练分类器
+    训练LR分类器
 
     Args:
         clf: 分类器
@@ -63,7 +63,33 @@ def train_LR(clf,
 
     # 训练
     clf.fit(X, y)
-    logger.info('LR classifier fit Done. And Coef are: %s' % (clf.coef_)) 
+    logger.info('LR classifier(%s) fit Done. And Coef are: %s' % (clf, clf.coef_)) 
+
+    return clf
+
+
+@Timer
+def train_clf(clf,
+              f_train_set='%s/train_combined_vec_data.csv' % (data_path)):
+    """
+    训练分类器
+
+    Args:
+        clf: 分类器
+        f_train_set: string, 训练集文件
+    Returns:
+        clf: 分类器
+    """
+    from sklearn import cross_validation
+    (X, y) = generate_X_y_arrays(f_train_set)
+
+    # 简单验证
+    scores = cross_validation.cross_val_score(clf, X, y, cv=5)
+    logger.info('Classifier simple cross-validated scores ars %s' % (scores))
+
+    # 训练
+    clf.fit(X, y)
+    logger.info('Classifier(%s) fit Done.' % (clf)) 
 
     return clf
 
@@ -132,18 +158,36 @@ def generate_recommend_result(clf, f_predict_set, f_recommend_set):
 
 
 if __name__ == '__main__':
-    """
+    store_path = '%s/classifier_data_1218' % (data_path)
+    f_train_set = '%s/train_set.csv' % (store_path)
+
     # Randomized Parameter Optimization
     from sklearn import svm, grid_search
     randomized_parameter = {'kernel':['rbf'], 'C': scipy.stats.expon(scale=100), 'gamma': scipy.stats.expon(scale=.1)}
     clf = grid_search.RandomizedSearchCV(svm.SVC(), randomized_parameter)
-    """
+    f_predict_set = '%s/predict_result_SVM.csv' % (store_path)
+    f_recommend_set = '%s/recommend_result_SVM.csv' % (store_path)
+    clf = train_svm(clf, f_train_set)
+    clf = generate_predict_result(clf, f_predict_set)
+    generate_recommend_result(clf, f_predict_set, f_recommend_set)
+    intersect(f_recommend_set)
+
     # L2范式线性回归
     from sklearn.linear_model import LogisticRegression
     clf = LogisticRegression(C=1000, penalty='l2', tol=0.01)
-    f_predict_set = '%s/predict_set/predict_result_0416.csv' % (data_path)
-    f_recommend_set = '%s/predict_set/recommend_result_0416.csv' % (data_path)
-    clf = train_LR(clf)
+    f_predict_set = '%s/predict_result_LR.csv' % (store_path)
+    f_recommend_set = '%s/recommend_result_LR.csv' % (store_path)
+    clf = train_LR(clf, f_train_set)
+    clf = generate_predict_result(clf, f_predict_set)
+    generate_recommend_result(clf, f_predict_set, f_recommend_set)
+    intersect(f_recommend_set)
+    
+    # 随机森林
+    from sklearn.ensemble import RandomForestClassifier
+    clf = RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1)
+    f_predict_set = '%s/predict_result_RandomForest.csv' % (store_path)
+    f_recommend_set = '%s/recommend_result_RandomForest.csv' % (store_path)
+    clf = train_clf(clf, f_train_set)
     clf = generate_predict_result(clf, f_predict_set)
     generate_recommend_result(clf, f_predict_set, f_recommend_set)
     intersect(f_recommend_set)

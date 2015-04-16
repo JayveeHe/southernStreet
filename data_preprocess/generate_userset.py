@@ -169,7 +169,7 @@ def generate_test_set(connect,
                       timerange,
                       f_train_set='%s/test_set.csv' % (data_path)):
     """
-    构建测试集
+    构建测试集, 即用来验证结果正确性的文件
 
     Args:
         connect: Mysqldb.connect(), 数据库连接句柄
@@ -186,6 +186,7 @@ def generate_test_set(connect,
     cursor = connect.cursor()
     (timerange_start, timerange_end) = map(lambda elem: arrow.get(elem).timestamp, timerange)
 
+    counter = 0
     with open(f_train_set, 'w') as fout:
         fout.write('user_id,item_id\n')
         sql = 'select distinct user_id, item_id from train_user where behavior_type=4 and time>%s and time<=%s;' % (
@@ -195,8 +196,11 @@ def generate_test_set(connect,
         result = cursor.fetchall()
         logger.debug('start generate test set')
         for [user_id, item_id] in result:
-            fout.write('%s,%s\n' % (user_id, item_id,))
-        logger.debug('success generate test set')
+            fout.write('%s,%s\n' % (user_id, item_id))
+            counter += 1
+
+    logger.debug('success generate test set, and size=%s.' % (counter))
+    logger.info('Result store in: %s' % (f_train_set))
 
     cursor.close()
 
@@ -248,8 +252,8 @@ if __name__ == '__main__':
                               user='tianchi_data',
                               passwd='tianchi_data',
                               db='tianchi')
-    f_train_set = '%s/train_set_1218.csv' % (data_path)
-    f_test_set = '%s/test_set_1218.csv' % (data_path)
-    generate_train_set(connect, ('2014-12-17', '2014-12-18'), ('2014-11-18', '2014-12-17'), f_train_set)
-    generate_test_set(connect, ('2014-12-18', '2014-12-19'), f_test_set)
+    #f_train_set = '%s/train_set_1218.csv' % (data_path)
+    f_test_set = '%s/test_set_1205-1206.csv' % (data_path)
+    #generate_train_set(connect, ('2014-12-17', '2014-12-18'), ('2014-11-18', '2014-12-17'), f_train_set)
+    generate_test_set(connect, ('2014-12-05', '2014-12-06'), f_test_set)
     connect.close()

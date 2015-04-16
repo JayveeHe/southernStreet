@@ -34,7 +34,7 @@ def intersect(f_result='%s/UserCF_recommend_3.csv' % (data_path),
                 | user_id,item_id |
                  -----------------
     Returns:
-        None
+        fout_name: string, 取交集后的文件名
     """
     item_id_set = set()
     with open(f_item_set) as fin:
@@ -53,8 +53,10 @@ def intersect(f_result='%s/UserCF_recommend_3.csv' % (data_path),
                 counter += 1
                 fout.write(line)
 
-    logger.info('intersect success, intersect size =%s and generate final result in %s' % (counter, f_result))
+    logger.info('intersect success, intersect size =%s and generate final result in %s' % (counter, fout_name))
+    return fout_name
 
 if __name__ == '__main__':
     #intersect()
-    intersect('%s/UserCF_recommend_1.csv'%(data_path))
+    #intersect('%s/UserCF_recommend_1.csv'%(data_path))
+    intersect('%s/test_set_1205-1206.csv' % (data_path))
