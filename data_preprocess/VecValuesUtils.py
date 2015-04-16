@@ -331,29 +331,29 @@ def get_train_vecdata():
 
 
 if __name__ == '__main__':
-    """
-    # print cal_item_popularity('71486077')
-    # print cal_item_popularity('324474695')
-    # print cal_user_desire('38056569')
-    # print cal_useritem_behavior_rate('38056569', '324474695')
-    # cal_positive_userset_vecvalues()
-
-
-    # for i in xrange(10):
-    # popularity = 1 / (1 + math.e ** (-(i/100.0)))-0.5
-    # print popularity
-    """
-
     # cal_vecvalues_tail()
 
     # combine_data()
 
     # **************************************************
-    # 生成预测集
+
+    # 生成预测集数据
     get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
                         predict_vectail_path='../data/predict/predict_vectail.csv')
 
+    # **************************************************
 
+    # 生成测试集数据
+    get_predict_vecdata(timerange=('2014-12-1', '2014-12-5'),
+                        predict_set_path='../data/test/test_set.csv',
+                        predict_vectail_path='../data/test/test_vectail.csv',
+                        csv_output_path='../data/test/test_combined.csv',
+                        svm_output_path='../data/test/test_svmdata.dat')
+
+    # **************************************************
+
+    # 生成训练集数据
+    get_train_vecdata()
 
     # **********************************************************
     # 生成训练集，以12-8到12-9之间购买过的行为作为正样本，12-8以前的所有数据作为构建向量的依据
