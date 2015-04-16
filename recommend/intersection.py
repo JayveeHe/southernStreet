@@ -44,13 +44,16 @@ def intersect(f_result='%s/UserCF_recommend_3.csv' % (data_path),
             item_id_set.add(cols[0])
         
     fout_name = f_result.replace('.csv', '_intersect.csv')
+    counter = 0
     with open(f_result) as fin, open(fout_name, 'w') as fout:
         fout.write(fin.readline())    # 首行特殊处理
         for line in fin:
             cols = line.strip().split(',')
             if cols[1] in item_id_set:
+                counter += 1
                 fout.write(line)
 
+    logger.info('intersect success, intersect size =%s and generate final result in %s' % (counter, f_result))
 
 if __name__ == '__main__':
     #intersect()

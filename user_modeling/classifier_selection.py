@@ -44,6 +44,35 @@ def generate_X_y_arrays(f_train_set='%s/train_set.csv' % (data_path)):
 
 
 @Timer
+def tmp_generate_X_y_arrays(f_train_set='%s/train_set.csv' % (data_path)):
+    """
+    生成分类器的训练集X 和标签集y, 暂时删除其中某列
+
+    Args:
+        f_train_set: 训练集的csv文件
+    Returns:
+        X: training samples, size=[n_samples, n_features]
+        y: class labels, size=[n_samples, 1]
+    """
+    from sklearn import preprocessing
+    import numpy as np
+    X = []
+    y = []
+
+    with open(f_train_set, 'r') as fin:
+        fin.readline()  # 忽略首行
+        for line in fin:
+            cols = line.strip().split(',')
+            X.append([float(i) for i in (cols[1:4]+cols[5:])])
+            y.append(int(cols[0]))  # tag在第一列，0 或 -1
+
+    logger.debug('classifier input X_size=[%s, %s] y_size=[%s, 1]' % (len(X), len(X[0]), len(y)))
+    X = preprocessing.scale(np.array(X))
+    y = np.array(y)
+    return X, y
+
+
+@Timer
 def train_classifier(clf, X, y):
     """
     训练分类器
@@ -68,7 +97,6 @@ def train_classifier(clf, X, y):
     scores = cross_validation.cross_val_score(clf, X, y, cv=5)
     logger.info('Classifier fit Done. And simple cross-validated scores ars %s' % (scores))
 
-    """
     # 十折法
     kf = cross_validation.KFold(len(X), n_folds=10)
     for train_index, test_index in kf:
@@ -77,7 +105,6 @@ def train_classifier(clf, X, y):
         clf.fit(X_train, y_train)
         score = clf.score(X_test, y_test)
         logger.info('10 folds cross-validated scores is %s.' % (score))
-    """
 
     # 以 1/10的训练集作为新的训练集输入，并得出评分
     test_size = 0.99
@@ -143,7 +170,7 @@ def classifier_comparison(X, y):
     """
 
     # 逻辑回归
-    for C in [0.01, 0.1, 1, 10, 100]:
+    for C in [0.01, 0.1, 1, 10, 100, 1000, 10000]:
         logger.info('Use LR with l1 penalty, C=%s:' % (C))
         clf = LogisticRegression(C=C, penalty='l1', tol=0.01)
         clf = train_classifier(clf, X, y)
@@ -158,4 +185,6 @@ def classifier_comparison(X, y):
 if __name__ == '__main__':
     (X, y) = generate_X_y_arrays('%s/train_combined_vec_data.csv' % (data_path))
     classifier_comparison(X, y)
+    #(X, y) = tmp_generate_X_y_arrays('%s/train_combined_vec_data.csv' % (data_path))
+    #classifier_comparison(X, y)
 
