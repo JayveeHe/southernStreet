@@ -118,6 +118,7 @@ def train_classifier(clf, X, y):
         score = clf.score(X_test, y_test)
         logger.info('%s作为训练集输入， cross-validated scores is %s.' % (1-test_size, score))
 
+    """
     # 以 1/100的训练集作为新的训练集输入，并得出评分
     test_size = 0.99
     rs = cross_validation.ShuffleSplit(len(X), test_size=test_size, random_state=int(time.time()))
@@ -127,6 +128,7 @@ def train_classifier(clf, X, y):
         clf.fit(X_train, y_train)
         score = clf.score(X_test, y_test)
         logger.info('%s作为训练集输入， cross-validated scores is %s.' % (1-test_size, score))
+    """
 
     return clf
 
@@ -193,7 +195,7 @@ def classifier_comparison(X, y):
 
 
 if __name__ == '__main__':
-    (X, y) = generate_X_y_arrays('%s/features_train_set_0416.csv' % (data_path))
+    (X, y) = generate_X_y_arrays('%s/train_1219/combined_out.csv' % (data_path))
     classifier_comparison(X, y)
     #(X, y) = tmp_generate_X_y_arrays('%s/train_combined_vec_data.csv' % (data_path))
     #classifier_comparison(X, y)
