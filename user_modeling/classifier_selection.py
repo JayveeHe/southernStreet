@@ -39,7 +39,36 @@ def generate_X_y_arrays(f_train_set='%s/train_set.csv' % (data_path)):
 
     logger.debug('classifier input X_size=[%s, %s] y_size=[%s, 1]' % (len(X), len(X[0]), len(y)))
     X = preprocessing.scale(np.array(X))
-    y = preprocessing.scale(np.array(y))
+    y = np.array(y)
+    return X, y
+
+
+@Timer
+def tmp_generate_X_y_arrays(f_train_set='%s/train_set.csv' % (data_path)):
+    """
+    生成分类器的训练集X 和标签集y, 暂时删除其中某列
+
+    Args:
+        f_train_set: 训练集的csv文件
+    Returns:
+        X: training samples, size=[n_samples, n_features]
+        y: class labels, size=[n_samples, 1]
+    """
+    from sklearn import preprocessing
+    import numpy as np
+    X = []
+    y = []
+
+    with open(f_train_set, 'r') as fin:
+        fin.readline()  # 忽略首行
+        for line in fin:
+            cols = line.strip().split(',')
+            X.append([float(i) for i in (cols[1:4]+cols[5:])])
+            y.append(int(cols[0]))  # tag在第一列，0 或 -1
+
+    logger.debug('classifier input X_size=[%s, %s] y_size=[%s, 1]' % (len(X), len(X[0]), len(y)))
+    X = preprocessing.scale(np.array(X))
+    y = np.array(y)
     return X, y
 
 
@@ -52,9 +81,10 @@ def train_classifier(clf, X, y):
         X: training samples, size=[n_samples, n_features]
         y: class labels, size=[n_samples, 1]
     Returns:
-        None
+        clf: classifier, 训练完的分类器
     """
     from sklearn import grid_search, cross_validation
+    import time
 
     """grid search 的结果
     clf.fit(X, y)
@@ -74,7 +104,19 @@ def train_classifier(clf, X, y):
         y_train, y_test = y[train_index], y[test_index]
         clf.fit(X_train, y_train)
         score = clf.score(X_test, y_test)
-        logger.info('10 folds cross-validated scores are %s.' % (score))
+        logger.info('10 folds cross-validated scores is %s.' % (score))
+
+    # 以 1/10的训练集作为新的训练集输入，并得出评分
+    test_size = 0.99
+    rs = cross_validation.ShuffleSplit(len(X), test_size=test_size, random_state=int(time.time()))
+    for train_index, test_index in rs:
+        X_train, X_test = X[train_index], X[test_index]
+        y_train, y_test = y[train_index], y[test_index]
+        clf.fit(X_train, y_train)
+        score = clf.score(X_test, y_test)
+        logger.info('%s作为训练集输入， cross-validated scores is %s.' % (1-test_size, score))
+
+    return clf
 
 
 @Timer
@@ -95,8 +137,10 @@ def classifier_comparison(X, y):
     from sklearn.naive_bayes import GaussianNB
     from sklearn.lda import LDA
     from sklearn.qda import QDA
+    from sklearn.linear_model import LogisticRegression
     import scipy
 
+    """
     # Exhaustive Grid Search
     exhaustive_parameters = {'kernel':['rbf'], 'C':[1, 10, 100, 1000], 'gamma':[1e-3, 1e-4]}
     clf_SVC_exhaustive = grid_search.GridSearchCV(SVC(), exhaustive_parameters)
@@ -123,8 +167,24 @@ def classifier_comparison(X, y):
     for name, clf in zip(names, classifiers):
         logger.info('Use %s:' % (name))
         train_classifier(clf, X, y)
+    """
+
+    # 逻辑回归
+    for C in [0.01, 0.1, 1, 10, 100, 1000, 10000]:
+        logger.info('Use LR with l1 penalty, C=%s:' % (C))
+        clf = LogisticRegression(C=C, penalty='l1', tol=0.01)
+        clf = train_classifier(clf, X, y)
+        logger.debug('coef matrix: %s' % (clf.coef_))
+
+        logger.info('Use LR with l2 penalty, C=%s:' % (C))
+        clf = LogisticRegression(C=C, penalty='l2', tol=0.01)
+        clf = train_classifier(clf, X, y)
+        logger.debug('coef matrix: %s' % (clf.coef_))
 
 
 if __name__ == '__main__':
     (X, y) = generate_X_y_arrays('%s/train_combined_vec_data.csv' % (data_path))
     classifier_comparison(X, y)
+    #(X, y) = tmp_generate_X_y_arrays('%s/train_combined_vec_data.csv' % (data_path))
+    #classifier_comparison(X, y)
+

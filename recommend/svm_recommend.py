@@ -4,7 +4,6 @@
 
 import os
 import sys
-from sklearn import svm, grid_search
 import scipy
 
 # project path
@@ -18,39 +17,71 @@ from user_modeling.classifier_selection import generate_X_y_arrays
 from recommend.intersection import intersect
 
 
-# Randomized Parameter Optimization
-randomized_parameter = {'kernel':['rbf'], 'C': scipy.stats.expon(scale=100), 'gamma': scipy.stats.expon(scale=.1)}
-clf = grid_search.RandomizedSearchCV(svm.SVC(), randomized_parameter)
-
-
 @Timer
-def train_svm():
+def train_svm(clf,
+              f_train_set='%s/train_combined_vec_data.csv' % (data_path)):
     """
     训练分类器
 
     Args:
-        None
+        clf: 分类器
+        f_train_set: string, 训练集文件
     Returns:
-        None
+        clf: 分类器
     """
-    (X, y) = generate_X_y_arrays('%s/train_combined_vec_data.csv' % (data_path))
+    from sklearn import cross_validation
+    (X, y) = generate_X_y_arrays(f_train_set)
+    # 简单验证
+    scores = cross_validation.cross_val_score(clf, X, y, cv=5)
+    logger.info('SVM classifier simple cross-validated scores ars %s' % (scores))
+
+    # 训练
     clf.fit(X, y)
-    logger.info('Classifier fit Done. Best params are %s with a best score of %0.2f' % (clf.best_params_, clf.best_score_))
+    logger.info('SVM classifier fit Done. Best params are %s with a best score of %0.2f' % (clf.best_params_, clf.best_score_))
+
+    return clf
 
 
 @Timer
-def generate_predict_result(f_predict='%s/predict_set/predict_result.csv' % (data_path),
+def train_LR(clf,
+              f_train_set='%s/train_combined_vec_data.csv' % (data_path)):
+    """
+    训练分类器
+
+    Args:
+        clf: 分类器
+        f_train_set: string, 训练集文件
+    Returns:
+        clf: 分类器
+    """
+    from sklearn import cross_validation
+    (X, y) = generate_X_y_arrays(f_train_set)
+
+    # 简单验证
+    scores = cross_validation.cross_val_score(clf, X, y, cv=5)
+    logger.info('LR classifier simple cross-validated scores ars %s' % (scores))
+
+    # 训练
+    clf.fit(X, y)
+    logger.info('LR classifier fit Done. And Coef are: %s' % (clf.coef_)) 
+
+    return clf
+
+@Timer
+def generate_predict_result(clf,
+                            f_predict='%s/predict_set/predict_result.csv' % (data_path),
                             f_vec_set='%s/predict_set/predict_combined_vec_data.csv' % (data_path),
                             f_uid_iid_set='%s/predict_set/predict_set.csv' % (data_path)):
     """
     生成预测结果
 
     Args:
+        clf: 分类器
         f_predict: string, 存放预测结果
         f_vec_set: string, 存放待预测向量的文件名
         f_uid_iid_set: string, 存放与向量对应的user_id, item_id
     Returns:
-
+        clf: 分类器
     """
     predict_X, predict_y = generate_X_y_arrays(f_vec_set)
     logger.debug('predict start.')
@@ -75,15 +106,16 @@ def generate_predict_result(f_predict='%s/predict_set/predict_result.csv' % (dat
 
 
 @Timer
-def generate_recommend_result(f_predict_set, f_recommend_set):
+def generate_recommend_result(clf, f_predict_set, f_recommend_set):
     """
     根据预测结果生成推荐结果
 
     Args:
+        clf: 分类器
         f_predict_set: string, 存放预测结果
         f_recommend_set: string, 存放推荐结果
     Returns:
-        None
+        clf: 分类器
     """
     with open(f_predict_set, 'r') as fin, open(f_recommend_set, 'w') as fout:
         fin.readline()    # 忽略首行
@@ -100,9 +132,18 @@ def generate_recommend_result(f_predict_set, f_recommend_set):
 
 
 if __name__ == '__main__':
-    f_predict_set = '%s/predict_set/predict_result.csv' % (data_path)
-    f_recommend_set = '%s/predict_set/recommend_result.csv' % (data_path)
-    train_svm()
-    generate_predict_result(f_predict_set)
-    generate_recommend_result(f_predict_set, f_recommend_set)
+    """
+    # Randomized Parameter Optimization
+    from sklearn import svm, grid_search
+    randomized_parameter = {'kernel':['rbf'], 'C': scipy.stats.expon(scale=100), 'gamma': scipy.stats.expon(scale=.1)}
+    clf = grid_search.RandomizedSearchCV(svm.SVC(), randomized_parameter)
+    """
+    # L2范式线性回归
+    from sklearn.linear_model import LogisticRegression
+    clf = LogisticRegression(C=1000, penalty='l2', tol=0.01)
+    f_predict_set = '%s/predict_set/predict_result_0416.csv' % (data_path)
+    f_recommend_set = '%s/predict_set/recommend_result_0416.csv' % (data_path)
+    clf = train_LR(clf)
+    clf = generate_predict_result(clf, f_predict_set)
+    generate_recommend_result(clf, f_predict_set, f_recommend_set)
     intersect(f_recommend_set)
