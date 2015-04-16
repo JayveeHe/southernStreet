@@ -284,8 +284,8 @@ def get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'),
     import MySQLdb
     from data_preprocess.MongoDB_Utils import MongodbUtils
 
-
-    connect = MySQLdb.connect(host='10.108.192.119',
+    logger.info('start get_predict_vecdata, timerange=%s to %' % (timerange[0], timerange[1]))
+    connect = MySQLdb.connect(host='127.0.0.1',
                               user='tianchi_data',
                               passwd='tianchi_data',
                               db='tianchi')
@@ -312,6 +312,7 @@ def get_train_vecdata():
     from data_preprocess import generate_userset
     from data_preprocess.MongoDB_Utils import MongodbUtils
 
+    logger.info('start get_train_vecdata, timerange=%s to %s' % ('2014-12-18', '2014-12-19'))
     connect = MySQLdb.connect(host='127.0.0.1',
                               user='tianchi_data',
                               passwd='tianchi_data',
@@ -337,14 +338,14 @@ if __name__ == '__main__':
 
     # **************************************************
 
-    # 生成预测集数据
-    get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
-                        predict_vectail_path='../data/predict/predict_vectail.csv')
+    # # 生成预测集数据
+    # get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
+    # predict_vectail_path='../data/predict/predict_vectail.csv')
 
     # **************************************************
 
     # 生成测试集数据
-    get_predict_vecdata(timerange=('2014-12-1', '2014-12-5'),
+    get_predict_vecdata(timerange=('2014-12-01', '2014-12-05'),
                         predict_set_path='../data/test/test_set.csv',
                         predict_vectail_path='../data/test/test_vectail.csv',
                         csv_output_path='../data/test/test_combined.csv',
@@ -353,7 +354,10 @@ if __name__ == '__main__':
     # **************************************************
 
     # 生成训练集数据
-    get_train_vecdata()
+    # get_train_vecdata()
+
+
+
 
     # **********************************************************
     # 生成训练集，以12-8到12-9之间购买过的行为作为正样本，12-8以前的所有数据作为构建向量的依据
