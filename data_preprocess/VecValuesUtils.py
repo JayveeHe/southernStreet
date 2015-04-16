@@ -190,13 +190,14 @@ def cal_user_behavior(connect,
     return f_output
 
 
+@Timer
 def cal_vecvalues_tail(mongo_train_user_collection, fin_path='../data/train_set.csv',
-                       fout_path='../data/vecvalues_tail.csv', stoptime='2014-12-19 00'):
+                       fout_path='../data/vecvalues_tail.csv', stoptime='2014-12-19'):
     """
     计算后三维的向量，需要mongodb支持
     :param fin_path:样本集csv路径
     :param fout_path:结果路径
-    :param stoptime:计算的截止日期
+    :param stoptime:计算的截止日期，格式'2014-12-19'
     :return:
     """
     logger.info('cal_vecvalues_tail start')
@@ -205,7 +206,7 @@ def cal_vecvalues_tail(mongo_train_user_collection, fin_path='../data/train_set.
     fout = open(fout_path, 'w')
     fout.write('tag,popularity,desire,behavior_rate\n')
     count = 0
-    # stoptime = '2014-12-19 00'
+    stoptime += ' 00'
     for line in fin:
         line = line.replace('\n', '')
         data = line.split(',')
@@ -214,7 +215,7 @@ def cal_vecvalues_tail(mongo_train_user_collection, fin_path='../data/train_set.
         tag = data[2]
         popularity = cal_item_popularity(mongo_train_user_collection, item_id, stoptime_str=stoptime)
         desire = cal_user_desire(mongo_train_user_collection, user_id, stoptime_str=stoptime)
-        behavior_rate = cal_useritem_behavior_rate(mongo_train_user_collection, user_id, stoptime_str=stoptime)
+        behavior_rate = cal_useritem_behavior_rate(mongo_train_user_collection, user_id, item_id, stoptime_str=stoptime)
         datastr = '%s,%s,%s,%s\n' % (tag, popularity, desire, behavior_rate)
         # datastr = tag + ',' + str(popularity) + ',' + str(desire) + ',' + str(behavior_rate) + '\n'
         fout.write(datastr)
@@ -224,10 +225,20 @@ def cal_vecvalues_tail(mongo_train_user_collection, fin_path='../data/train_set.
     logger.info('cal_vecvalues_tail done, result path=' + fout_path)
 
 
+@Timer
 def combine_data(userbehavior_filepath='%s/train_set_calUserBehavior.csv' % (data_path),
                  tail_filepath='%s/vecvalues_tail.csv' % (data_path),
                  csv_output_path='%s/combined_vec_data.csv' % (data_path),
                  svm_output_path='%s/svmdata.dat' % (data_path)):
+    """
+    组合前四维向量与后三维向量数据
+    :param userbehavior_filepath:
+    :param tail_filepath:
+    :param csv_output_path:
+    :param svm_output_path:
+    :return:
+    """
+
     logger.info('start combining data')
     userbehavior_file = open(userbehavior_filepath, 'r')
     tail_file = open(tail_filepath, 'r')
@@ -256,14 +267,19 @@ def combine_data(userbehavior_filepath='%s/train_set_calUserBehavior.csv' % (dat
             tag, see, favorite, cart, buy, popularity, desire, behavior_rate)
         svmout.write(svmstr)
         csvout.write(csvstr)
-    logger.info('combine_data done')
+    logger.info('combine_data done,svmout_path=%s, csvout_path=%s' % (svm_output_path, csv_output_path))
 
 
-def get_predict_vecdata(timerange=('2014-12-16', '2014-12-19'),
+@Timer
+def get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'),
                         predict_set_path='%s/predict/predict_set.csv' % (data_path),
                         predict_vectail_path='%s/predict/predict_vectail.csv' % (data_path),
                         csv_output_path='%s/predict/combined_vec_data.csv' % (data_path),
                         svm_output_path='%s/predict/svmdata.dat' % (data_path)):
+    """
+    生成预测集，需要制定时间范围与各输出路径
+    """
+
     from data_preprocess import generate_userset
     import MySQLdb
     from data_preprocess.MongoDB_Utils import MongodbUtils
@@ -282,8 +298,36 @@ def get_predict_vecdata(timerange=('2014-12-16', '2014-12-19'),
     stoptime = timerange[1]
     cal_vecvalues_tail(train_user, predict_set_path, predict_vectail_path, stoptime)
     predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
-    cal_user_behavior(connect, predict_set_path)
+    cal_user_behavior(connect, ('2014-11-17', stoptime), predict_set_path)
     combine_data(predict_vecbehavior_path, predict_vectail_path, csv_output_path, svm_output_path)
+
+
+@Timer
+def get_train_vecdata():
+    """
+    生成训练数据集
+    """
+
+    import MySQLdb
+    from data_preprocess import generate_userset
+    from data_preprocess.MongoDB_Utils import MongodbUtils
+
+    connect = MySQLdb.connect(host='127.0.0.1',
+                              user='tianchi_data',
+                              passwd='tianchi_data',
+                              db='tianchi')
+
+    mongo_utils = MongodbUtils(db_address, 27017)
+    train_user = mongo_utils.get_db().train_user
+    generate_userset.generate_train_set(connect, ('2014-12-18', '2014-12-19'), ('2014-12-18', '2014-12-19'),
+                                        r'../data/train/train_set_1819.csv')
+    cal_vecvalues_tail(train_user, r'../data/train/train_set_1819.csv', r'../data/train/train_tail.csv', '2014-12-18')
+    # predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
+    cal_user_behavior(connect, ('2014-11-17', '2014-12-18'), r'../data/train/train_set_1819.csv')
+    combine_data(r'../data/train/train_set_1819_calUserBehavior.csv',
+                 r'../data/train/train_tail.csv',
+                 r'../data/train/combined_out.csv',
+                 r'../data/train/svm_out.csv')
 
 
 if __name__ == '__main__':
@@ -304,28 +348,38 @@ if __name__ == '__main__':
 
     # combine_data()
 
-    # get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
-    #                     predict_vectail_path='../data/predict/predict_vectail.csv')
-    import MySQLdb
-    from data_preprocess import generate_userset
+    # **************************************************
+    # 生成预测集
+    get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
+                        predict_vectail_path='../data/predict/predict_vectail.csv')
 
-    connect = MySQLdb.connect(host='127.0.0.1',
-                              user='tianchi_data',
-                              passwd='tianchi_data',
-                              db='tianchi')
-    from data_preprocess.MongoDB_Utils import MongodbUtils
 
-    mongo_utils = MongodbUtils(db_address, 27017)
-    train_user = mongo_utils.get_db().train_user
-    generate_userset.generate_train_set(connect, ('2014-12-18', '2014-12-19'), ('2014-12-18', '2014-12-19'),
-                                        r'../data/train_set_1819.csv')
-    cal_vecvalues_tail(train_user, r'../data/train_set_1819.csv', r'../data/temp/tail.csv', '2014-12-18')
-    # predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
-    cal_user_behavior(connect, ('2014-11-17', '2014-12-18'), r'../data/train_set_1819.csv')
-    combine_data(r'../data/train_set_1819_calUserBehavior.csv',
-                 r'../data/temp/tail.csv',
-                 r'../data/temp/combined_out.csv',
-                 r'../data/temp/svm_out.csv')
+
+    # **********************************************************
+    # 生成训练集，以12-8到12-9之间购买过的行为作为正样本，12-8以前的所有数据作为构建向量的依据
+    # import MySQLdb
+    # from data_preprocess import generate_userset
+    #
+    # connect = MySQLdb.connect(host='127.0.0.1',
+    # user='tianchi_data',
+    # passwd='tianchi_data',
+    # db='tianchi')
+    # from data_preprocess.MongoDB_Utils import MongodbUtils
+    #
+    # mongo_utils = MongodbUtils(db_address, 27017)
+    # train_user = mongo_utils.get_db().train_user
+    # generate_userset.generate_train_set(connect, ('2014-12-18', '2014-12-19'), ('2014-12-18', '2014-12-19'),
+    # r'../data/train_set_1819.csv')
+    # cal_vecvalues_tail(train_user, r'../data/train_set_1819.csv', r'../data/temp/tail.csv', '2014-12-18')
+    # # predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
+    # cal_user_behavior(connect, ('2014-11-17', '2014-12-18'), r'../data/train_set_1819.csv')
+    # combine_data(r'../data/train_set_1819_calUserBehavior.csv',
+    # r'../data/temp/tail.csv',
+    # r'../data/temp/combined_out.csv',
+    # r'../data/temp/svm_out.csv')
+    # ************************************************************
+
+
 
     # connect = MySQLdb.connect(host='127.0.0.1',
     # user='tianchi_data',
