@@ -1,4 +1,3 @@
-# tianchi_project
 
 ## 项目结构
 
