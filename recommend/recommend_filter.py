@@ -9,6 +9,7 @@ data_path = '%s/data' % (project_path)
 # project import
 sys.path.append(project_path)
 from log.get_logger import logger, Timer
+
 __author__ = 'Jayvee'
 
 
@@ -47,7 +48,8 @@ def popularity_in_category(item_id, stoptime_str, train_user_connect, train_item
 
 
 @Timer
-def find_category_relationship(train_user_connect, train_item_connect, time_window=2):
+def find_category_relationship(train_user_connect, train_item_connect, output_path='../data/relationData.json',
+                               time_window=2):
     """
     计算商品子集中所有类别的承接关系
     :param train_user_connect:
@@ -63,10 +65,10 @@ def find_category_relationship(train_user_connect, train_item_connect, time_wind
     relationDict = {}
     itemcount = 0
     usercount = 0
-    output = open('../data/relationData.json', 'w')
+    output = open(output_path, 'w')
     for user_id in userids:
         usercount += 1
-        print 'user_index:'+str(usercount)
+        print 'user_index:' + str(usercount)
         # 返回根据时间升序排序的所有该用户的购买行为
         user_buy_behaviors = train_user_connect.find({'user_id': user_id,
                                                       'behavior_type': '4'}).sort('time', pymongo.ASCENDING)
@@ -75,8 +77,8 @@ def find_category_relationship(train_user_connect, train_item_connect, time_wind
             buyList.append(buy_behavior)
         # 根据时间窗口寻找类别之间的承接关系
         len_buylist = len(buyList)
-        print 'len_buylist = '+str(len_buylist)
-        logger.debug('user_index:'+str(usercount)+'\tlen_buylist = '+str(len_buylist))
+        print 'len_buylist = ' + str(len_buylist)
+        logger.debug('user_index:' + str(usercount) + '\tlen_buylist = ' + str(len_buylist))
         for i in range(len_buylist):
             currentBuy = buyList[i]
             itemcount += 1
@@ -117,18 +119,18 @@ def find_category_relationship(train_user_connect, train_item_connect, time_wind
 
 
 if __name__ == '__main__':
-    project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
-    data_path = '%s/data' % (project_path)
+    # project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+    # data_path = '%s/data' % (project_path)
     from data_preprocess.MongoDB_Utils import MongodbUtils
     # project import
-    sys.path.append(project_path)
+    # sys.path.append(project_path)
     # connect = MySQLdb.connect(host='127.0.0.1',
-    #                           user='tianchi_data',
-    #                           passwd='tianchi_data',
+    # user='tianchi_data',
+    # passwd='tianchi_data',
     #                           db='tianchi')
     db_address = json.loads(open('%s/conf/DB_Address.conf' % (project_path), 'r').read())['MongoDB_Address']
 
     mongo_utils = MongodbUtils(db_address, 27017)
     train_user = mongo_utils.get_db().train_user
     train_item = mongo_utils.get_db().train_item
-    find_category_relationship(train_user, train_item, 3)
+    find_category_relationship(train_user, train_item, '%s/relationDict.json' % data_path, 3)
