@@ -1,11 +1,14 @@
 # coding=utf-8
 import json
 import os
-import MySQLdb
 import sys
-from data_preprocess.MongoDB_Utils import MongodbUtils
-from log.get_logger import logger, Timer
 
+project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+data_path = '%s/data' % (project_path)
+
+# project import
+sys.path.append(project_path)
+from log.get_logger import logger, Timer
 __author__ = 'Jayvee'
 
 
@@ -116,7 +119,7 @@ def find_category_relationship(train_user_connect, train_item_connect, time_wind
 if __name__ == '__main__':
     project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
     data_path = '%s/data' % (project_path)
-
+    from data_preprocess.MongoDB_Utils import MongodbUtils
     # project import
     sys.path.append(project_path)
     # connect = MySQLdb.connect(host='127.0.0.1',
