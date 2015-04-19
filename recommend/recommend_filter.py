@@ -55,11 +55,11 @@ def find_category_relationship(train_user_connect, train_item_connect, json_outp
     import pymongo
     import json
 
-    logger.debug('find_category_relationship start!')
+    logger.info('find_category_relationship start!')
     userids = train_user_connect.distinct('user_id')
     logger.debug('userids loaded!')
     # category_items = train_item_connect.distinct('item_id')
-    logger.debug('category_items loaded')
+    # logger.debug('category_items loaded')
     relationDict = {}
     itemcount = 0
     usercount = 0
@@ -107,7 +107,6 @@ def find_category_relationship(train_user_connect, train_item_connect, json_outp
         if usercount % 1000 == 0:
             logger.debug('No.%s user done, user_index:%s\tlen_category = %s' % (usercount, usercount, len_category))
 
-
     jsonstr = json.dumps(relationDict)
     output = open(json_output_path, 'w')
     output.write(jsonstr)
@@ -117,6 +116,8 @@ def find_category_relationship(train_user_connect, train_item_connect, json_outp
     for source in relationDict.keys():
         for target in relationDict.get(source):
             csvout.write('%s,%s,%s\n' % (source, target, relationDict[source][target]))
+    logger.info('find_category_relationship done, json_output_path=%s\tcsv_output_path=%s' % (
+    json_output_path, csv_output_path))
 
 
 if __name__ == '__main__':
@@ -135,7 +136,7 @@ if __name__ == '__main__':
     train_user = mongo_utils.get_db().train_user
     train_item = mongo_utils.get_db().train_item
     # find_category_relationship(train_user, train_item, json_output_path='%s/relationDict.json' % data_path,
-    #                            csv_output_path='%s/relationDict.csv' % data_path)
+    # csv_output_path='%s/relationDict.csv' % data_path)
     find_category_relationship(train_user, train_item)
 
     # 类内热门度调用示例
