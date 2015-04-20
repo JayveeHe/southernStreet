@@ -42,8 +42,8 @@ def cal_popularity_in_category(item_id, stoptime_str, train_user_connect):
 
 
 @Timer
-def find_category_relationship(train_user_connect, train_item_connect, json_output_path='../data/relationData.json',
-                               csv_output_path='../data/relationData.csv',
+def find_category_relationship(train_user_connect, train_item_connect, json_output_path='../data/relationData_new.json',
+                               csv_output_path='../data/relationData_new.csv',
                                time_window=2):
     """
     计算商品子集中所有类别的承接关系
@@ -182,12 +182,14 @@ if __name__ == '__main__':
     db_address = json.loads(open('%s/conf/DB_Address.conf' % (project_path), 'r').read())['MongoDB_Address']
 
     mongo_utils = MongodbUtils(db_address, 27017)
-    train_user = mongo_utils.get_db().train_user
-    train_item = mongo_utils.get_db().train_item
+    # train_user = mongo_utils.get_db().train_user
+    # train_item = mongo_utils.get_db().train_item
+    train_user = mongo_utils.get_db().train_user_new
+    train_item = mongo_utils.get_db().train_item_new
 
     #find_category_relationship(train_user, train_item, '%s/relationDict.json' % data_path, 3)
     f_recommend = '%s/test_1206/RandomForest_recommend_intersect.csv' % (data_path)
-    generate_from_popularity_in_category(f_recommend, '2014-12-06', train_user) 
+    generate_from_popularity_in_category(f_recommend, '2014-12-06', train_user)
 
     """
     # find_category_relationship(train_user, train_item, json_output_path='%s/relationDict.json' % data_path,
