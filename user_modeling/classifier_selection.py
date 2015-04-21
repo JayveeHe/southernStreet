@@ -14,7 +14,6 @@ sys.path.append(project_path)
 from log.get_logger import logger, Timer
 
 
-@Timer
 def generate_X_y_arrays(f_train_set='%s/train_set.csv' % (data_path)):
     """
     生成分类器的训练集X 和标签集y
@@ -30,7 +29,7 @@ def generate_X_y_arrays(f_train_set='%s/train_set.csv' % (data_path)):
     X = []
     y = []
 
-    logger.debug('generate X, y arrays from %s ...' % (f_train_set))
+    #logger.debug('generate X, y arrays from %s ...' % (f_train_set))
     with open(f_train_set, 'r') as fin:
         fin.readline()  # 忽略首行
         for line in fin:
@@ -74,7 +73,6 @@ def tmp_generate_X_y_arrays(f_train_set='%s/train_set.csv' % (data_path)):
     return X, y
 
 
-@Timer
 def train_classifier(clf, X, y):
     """
     训练分类器

@@ -39,7 +39,7 @@ def Timer(func):
 if __name__ == '__main__':
     @Timer
     def foo(arg1, kwarg1='default'):
-        print 'in foo(%s, kwarg1=%s)' % (arg1, kwarg1)
+        logger.debug('in foo(%s, kwarg1=%s)' % (arg1, kwarg1))
         return 'haha'
 
-    print(foo('test_Timer'))
+    logger.debug(foo('test_Timer'))
