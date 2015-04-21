@@ -2,6 +2,7 @@
 import json
 import os
 import sys
+import MySQLdb
 
 project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
 data_path = '%s/data' % (project_path)
@@ -169,27 +170,93 @@ def generate_from_popularity_in_category(f_recommend, stoptime_str, train_user_c
     return f_output
 
 
+@Timer
+def filter_with_category_popularity(connect, train_user_connect, f_recommend, f_category_relationship, stoptime_str):
+    """
+    用类间承接关系和类内排名过滤结果
+
+    Args:
+        connect: MySQLdb.connect(), 数据库连接句柄
+        train_user_connect: Mongodb的train_user表连接
+        f_recommend: fin, 推荐结果文件
+        f_category_relationship: fin, 类间承接关系
+        stoptime_str: string, 截止日期
+    Returns:
+        f_output: fout, 过滤后的结果 
+    """
+    import arrow
+    import random
+
+    cursor = connect.cursor()
+    f_output = f_recommend.replace('.csv', '_filter.csv')
+    logger.debug('Start filter recommend result..')
+    
+    # 根据推荐文件生成
+    stoptime_timestamp = arrow.get(stoptime_str).timestamp
+    recommend_dict = {}  # {u_id1:[i_id1,i_id2], u_id2:[i_id3,i_id4]}
+    with open(f_recommend, 'r') as fin:
+        fin.readline()
+        for line in fin:
+            cols = line.strip().split(',')
+            if recommend_dict.has_key(cols[0]):
+                recommend_dict[cols[0]].append(cols[1])
+            else:
+                recommend_dict[cols[0]] = [cols[1]]
+    # 分两步生成最后的dict是为了减少mysql查询数
+    recommend_tuple_dict = {}  # {(u_id1,i_id1):(u_last_category, id1_category), (u_id1, i_id2):(u_last_category, id2_category)}
+    for (u_id, i_ids) in recommend_dict.iteritems():
+        sql = 'SELECT item_category FROM train_user WHERE user_id=%s and time<%s ORDER BY time DESC limit 1;' % (u_id, stoptime_timestamp)
+        cursor.execute(sql)
+        result = cursor.fetchall()
+        user_last_category = result[0][0]
+        for i_id in i_ids:
+            sql = 'SELECT item_category FROM train_item WHERE item_id=%s;' % (i_id)
+            cursor.execute(sql)
+            result = cursor.fetchall()
+            recommend_tuple_dict[(u_id,i_id)] = (user_last_category,result[0][0]) 
+    logger.debug('原推荐结果长度:%s'% (len(recommend_tuple_dict)))
+
+    # 根据承接关系文件生成
+    relationship_set = set()
+    with open(f_category_relationship, 'r') as fin:
+        fin.readline() 
+        for line in fin:
+            cols = line.strip().split(',')
+            relationship_set.add((cols[0],cols[1]))
+    logger.debug('承接关系结果长度:%s'% (len(relationship_set)))
+
+    # 输出结果
+    with open(f_output, 'w') as fout:
+        in_counter = 0
+        random_counter = 0
+        fout.wirte('user_id,item_id\n')
+        for ((user_id, item_id), category_tuple) in recommend_tuple_dict.iteritems():
+            if category_tuple in relationship_set:
+                in_counter += 1
+                fout.write('%s,%s\n' % (user_id, item_id))
+            else:
+                if random.random() <= cal_popularity_in_category(item_id, stoptime_str, train_user_connect):
+                    random_counter += 1
+                    fout.write('%s,%s\n' % (user_id, item_id))
+                    logger.debug('NO.%s random pick, [%s,%s]' % (random_counter, user_id, item_id))
+
+    logger.info('对推荐结果的筛选完成，结果路径:%s' % ())
+    logger.info('筛选前%s, 筛选后%s. 其中在承接关系的有%s, 随机挑选的有%s' %(len(recommend_tuple_dict), in_counter+random_counter, in_counter, random_counter))
+        
+
 if __name__ == '__main__':
-    # project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
-    # data_path = '%s/data' % (project_path)
     from data_preprocess.MongoDB_Utils import MongodbUtils
-    # project import
-    # sys.path.append(project_path)
-    # connect = MySQLdb.connect(host='127.0.0.1',
-    # user='tianchi_data',
-    # passwd='tianchi_data',
-    # db='tianchi')
     db_address = json.loads(open('%s/conf/DB_Address.conf' % (project_path), 'r').read())['MongoDB_Address']
 
     mongo_utils = MongodbUtils(db_address, 27017)
-    # train_user = mongo_utils.get_db().train_user
-    # train_item = mongo_utils.get_db().train_item
-    train_user = mongo_utils.get_db().train_user_new
-    train_item = mongo_utils.get_db().train_item_new
+    train_user = mongo_utils.get_db().train_user
+    train_item = mongo_utils.get_db().train_item
+    #train_user = mongo_utils.get_db().train_user_new
+    #train_item = mongo_utils.get_db().train_item_new
 
     #find_category_relationship(train_user, train_item, '%s/relationDict.json' % data_path, 3)
-    f_recommend = '%s/test_1206/RandomForest_recommend_intersect.csv' % (data_path)
-    generate_from_popularity_in_category(f_recommend, '2014-12-06', train_user)
+    #f_recommend = '%s/test_1206/RandomForest_recommend_intersect.csv' % (data_path)
+    #generate_from_popularity_in_category(f_recommend, '2014-12-06', train_user)
 
     """
     # find_category_relationship(train_user, train_item, json_output_path='%s/relationDict.json' % data_path,
@@ -199,3 +266,12 @@ if __name__ == '__main__':
     # 类内热门度调用示例
     # print cal_popularity_in_category('166670035', '2014-12-19', train_user)
     """
+
+    # 对结果进行筛选
+    connect = MySQLdb.connect(host='127.0.0.1',
+                              user='tianchi_data',
+                              passwd='tianchi_data',
+                              db='tianchi')
+    f_recommend = '%s/predict_1219/RandomForest_recommend_intersect.csv' % (data_path)
+    f_category_relationship = '%s/relationship_reduced.csv' % (data_path)
+    filter_with_category_popularity(connect, train_user, f_recommend, f_category_relationship, '2014-12-19')
