@@ -354,10 +354,10 @@ if __name__ == '__main__':
 
     # 生成测试集数据
     get_predict_vecdata(timerange=('2014-12-01', '2014-12-05'),
-                        predict_set_path='%s/test_1205/test_1205_set.csv',
-                        predict_vectail_path='%s/test_1205/test_1205_vectail.csv',
-                        csv_output_path='%s/test_1205/test_1205_combined.csv',
-                        svm_output_path='%s/test_1205/test_1205_svmdata.dat')
+                        predict_set_path='%s/test_1205/test_1205_set.csv'% data_path,
+                        predict_vectail_path='%s/test_1205/test_1205_vectail.csv'% data_path,
+                        csv_output_path='%s/test_1205/test_1205_combined.csv'% data_path,
+                        svm_output_path='%s/test_1205/test_1205_svmdata.dat'% data_path)
 
     # **************************************************
 
