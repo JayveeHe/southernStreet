@@ -4,7 +4,7 @@
 
 import os
 import sys
-#import scipy
+import scipy
 import time
 
 # project path
@@ -144,16 +144,18 @@ def test(f_recommend_intersect_set, f_real_buy_intersect_set):
 
 if __name__ == '__main__':
     f_train_set = '%s/train_1219/combined_out.csv' % (data_path)
+
     """
     # for predict
-    f_predict_vect = '%s/predict_1220/combined_vec_data.csv' % (data_path)
-    f_predict_id_set = '%s/predict_1220/predict_set.csv' % (data_path)
+    predict_path = '%s/predict_1219' % (data_path)
+    f_predict_vect = '%s/combined_vec_data.csv' % (predict_path)
+    f_predict_id_set = '%s/predict_set.csv' % (predict_path)
 
     # L2范式线性回归
     from sklearn.linear_model import LogisticRegression
     clf = LogisticRegression(C=1000, penalty='l2', tol=0.01)
     clf = train(clf, f_train_set)
-    f_predict_out = predict(clf, f_predict_vect, f_predict_id_set, '%s/predict_1220/LR_predict_out.csv' % (data_path))
+    f_predict_out = predict(clf, f_predict_vect, f_predict_id_set, '%s/LR_predict_out.csv' % (predict_path))
     recommend(f_predict_out, f_predict_out.replace('predict_out', 'recommend'))
 
 
@@ -162,7 +164,7 @@ if __name__ == '__main__':
     randomized_parameter = {'kernel':['rbf'], 'C': scipy.stats.expon(scale=100), 'gamma': scipy.stats.expon(scale=.1)}
     clf = grid_search.RandomizedSearchCV(svm.SVC(), randomized_parameter)
     clf = train(clf, f_train_set)
-    f_predict_out = predict(clf, f_predict_vect, f_predict_id_set, '%s/predict_1220/SVM_predict_out.csv' % (data_path))
+    f_predict_out = predict(clf, f_predict_vect, f_predict_id_set, '%s/SVM_predict_out.csv' % (predict_path))
     recommend(f_predict_out, f_predict_out.replace('predict_out', 'recommend'))
 
     
@@ -170,9 +172,8 @@ if __name__ == '__main__':
     from sklearn.ensemble import RandomForestClassifier
     clf = RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1)
     clf = train(clf, f_train_set)
-    f_predict_out = predict(clf, f_predict_vect, f_predict_id_set, '%s/predict_1220/RandomForest_predict_out.csv' % (data_path))
+    f_predict_out = predict(clf, f_predict_vect, f_predict_id_set, '%s/RandomForest_predict_out.csv' % (predict_path))
     recommend(f_predict_out, f_predict_out.replace('predict_out', 'recommend'))
-    """
 
     """
     # for self test
@@ -190,6 +191,7 @@ if __name__ == '__main__':
     test(f_recommend_set_intersect, f_real_buy_intersect_set)
 
 
+    """
     # Randomized Parameter Optimization
     from sklearn import svm, grid_search
     randomized_parameter = {'kernel':['rbf'], 'C': scipy.stats.expon(scale=100), 'gamma': scipy.stats.expon(scale=.1)}
@@ -198,6 +200,7 @@ if __name__ == '__main__':
     f_predict_out = predict(clf, f_predict_vect, f_predict_id_set, '%s/SVM_predict_out.csv' % (test_path))
     f_recommend_set_intersect = recommend(f_predict_out, f_predict_out.replace('predict_out', 'recommend'))
     test(f_recommend_set_intersect, f_real_buy_intersect_set)
+    """
 
     
     # 随机森林
@@ -207,10 +210,9 @@ if __name__ == '__main__':
     f_predict_out = predict(clf, f_predict_vect, f_predict_id_set, '%s/RandomForest_predict_out.csv' % (test_path))
     f_recommend_set_intersect = recommend(f_predict_out, f_predict_out.replace('predict_out', 'recommend'))
     test(f_recommend_set_intersect, f_real_buy_intersect_set)
-    """
 
+    """
     test_path = '%s/test_1206' % (data_path)
     f_real_buy_intersect_set = '%s/real_buy_intersect.csv' % (test_path)
 
     test('%s/RandomForest_recommend_intersect_categoryPopularity.csv'%(test_path), f_real_buy_intersect_set)
-
