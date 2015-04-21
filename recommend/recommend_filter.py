@@ -137,7 +137,7 @@ if __name__ == '__main__':
     train_item = mongo_utils.get_db().train_item
     # find_category_relationship(train_user, train_item, json_output_path='%s/relationDict.json' % data_path,
     # csv_output_path='%s/relationDict.csv' % data_path)
-    find_category_relationship(train_user, train_item)
+    find_category_relationship(train_user, train_item,time_window=1)
 
     # 类内热门度调用示例
     # print cal_popularity_in_category('166670035', '2014-12-19', train_user)
