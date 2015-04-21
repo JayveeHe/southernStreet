@@ -4,7 +4,7 @@
 
 import os
 import sys
-import scipy
+#import scipy
 import time
 
 # project path
@@ -174,6 +174,7 @@ if __name__ == '__main__':
     recommend(f_predict_out, f_predict_out.replace('predict_out', 'recommend'))
     """
 
+    """
     # for self test
     test_path = '%s/test_1206' % (data_path)
     f_predict_vect = '%s/test_combined.csv' % (test_path)
@@ -206,4 +207,10 @@ if __name__ == '__main__':
     f_predict_out = predict(clf, f_predict_vect, f_predict_id_set, '%s/RandomForest_predict_out.csv' % (test_path))
     f_recommend_set_intersect = recommend(f_predict_out, f_predict_out.replace('predict_out', 'recommend'))
     test(f_recommend_set_intersect, f_real_buy_intersect_set)
+    """
+
+    test_path = '%s/test_1206' % (data_path)
+    f_real_buy_intersect_set = '%s/real_buy_intersect.csv' % (test_path)
+
+    test('%s/RandomForest_recommend_intersect_categoryPopularity.csv'%(test_path), f_real_buy_intersect_set)
 

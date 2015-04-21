@@ -42,8 +42,8 @@ def cal_popularity_in_category(item_id, stoptime_str, train_user_connect):
 
 
 @Timer
-def find_category_relationship(train_user_connect, train_item_connect, json_output_path='../data/relationData.json',
-                               csv_output_path='../data/relationData.csv',
+def find_category_relationship(train_user_connect, train_item_connect, json_output_path='../data/relationData_new.json',
+                               csv_output_path='../data/relationData_new.csv',
                                time_window=2):
     """
     计算商品子集中所有类别的承接关系
@@ -120,6 +120,55 @@ def find_category_relationship(train_user_connect, train_item_connect, json_outp
     json_output_path, csv_output_path))
 
 
+@Timer
+def generate_from_popularity_in_category(f_recommend, stoptime_str, train_user_connect):
+    """
+    根据类内排名生成结果
+
+    Args:
+        f_recommend: fin, 推荐结果文件
+        stoptime_str: string, 预测日期
+        train_user_connect: MongoDB的 train_user的连接
+    Returns:
+        f_output: fout, 最终输出结果
+    """
+    import random
+    category_popularity_item = dict()  # key:item_id, value:类内流行度
+    category_popularity = dict()  # key:(user_id,item_id), value:类内流行度
+
+    with open(f_recommend, 'r') as fin:
+        fin.readline()
+        for line in fin:
+            cols = line.strip().split(',')
+            ui_tuple = (cols[0], cols[1])
+            if cols[1] not in category_popularity_item:
+                category_popularity[ui_tuple] = cal_popularity_in_category(cols[1], stoptime_str, train_user_connect)
+            else:
+                category_popularity[ui_tuple] = category_popularity_item[cols[1]]
+
+    # 最终结果由类内排名前%25的 加上随机的25%
+    sorted_result = sorted(category_popularity.iteritems(), key=lambda d: d[1], reverse=True)
+    index_slice = int(0.25*len(sorted_result))
+    front_25 = sorted_result[:index_slice]
+    last_75 = sorted_result[index_slice:]
+    random.shuffle(last_75)
+    random_25 = last_75[:index_slice]
+
+    # 写出最后结果
+    f_output = f_recommend.replace('.csv', '_categoryPopularity.csv')
+    logger.debug('Start store result to %s' % (f_output))
+    with open(f_output, 'w') as fout:
+        fout.write('user_id,item_id\n')
+        for elem in front_25:
+            logger.debug('front 25, popularity:%s' % (elem[1]))
+            fout.write('%s,%s\n' % (elem[0][0], elem[0][1]))
+        for elem in random_25:
+            logger.debug('random 25, popularity:%s' % (elem[1]))
+            fout.write('%s,%s\n' % (elem[0][0], elem[0][1]))
+
+    return f_output
+
+
 if __name__ == '__main__':
     # project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
     # data_path = '%s/data' % (project_path)
@@ -133,12 +182,20 @@ if __name__ == '__main__':
     db_address = json.loads(open('%s/conf/DB_Address.conf' % (project_path), 'r').read())['MongoDB_Address']
 
     mongo_utils = MongodbUtils(db_address, 27017)
-    train_user = mongo_utils.get_db().train_user
-    train_item = mongo_utils.get_db().train_item
+    # train_user = mongo_utils.get_db().train_user
+    # train_item = mongo_utils.get_db().train_item
+    train_user = mongo_utils.get_db().train_user_new
+    train_item = mongo_utils.get_db().train_item_new
+
+    #find_category_relationship(train_user, train_item, '%s/relationDict.json' % data_path, 3)
+    f_recommend = '%s/test_1206/RandomForest_recommend_intersect.csv' % (data_path)
+    generate_from_popularity_in_category(f_recommend, '2014-12-06', train_user)
+
+    """
     # find_category_relationship(train_user, train_item, json_output_path='%s/relationDict.json' % data_path,
     # csv_output_path='%s/relationDict.csv' % data_path)
     find_category_relationship(train_user, train_item,time_window=1)
 
     # 类内热门度调用示例
     # print cal_popularity_in_category('166670035', '2014-12-19', train_user)
-
+    """

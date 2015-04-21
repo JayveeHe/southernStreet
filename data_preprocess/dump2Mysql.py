@@ -1,26 +1,20 @@
 # -*- coding: utf-8 -*-
 
 """把数据集写入数据库"""
+import os
 
 import MySQLdb
 import arrow
-import logging
+import sys
 
-# logger初始化
-# create logger
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-# create file handler
-fh = logging.FileHandler('data_process.log')
-fh.setLevel(logging.DEBUG)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s- '
-                              '%(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-# add handlers to logger
-logger.addHandler(fh)
+project_path = os.path.dirname(os.path.abspath(os.path.dirname(__file__)))
+data_path = '%s/data' % (project_path)
+
+sys.path.append(project_path)
+from log.get_logger import logger, Timer
 
 
+@Timer
 def insert_train_user_2table(connect,
                              fin='tianchi_mobile_recommend_train_user.csv'):
     """
@@ -35,14 +29,14 @@ def insert_train_user_2table(connect,
     cursor = connect.cursor()
     counter = 0
     with open(fin, 'rb') as f:
-        f.readline()    # 忽略首行
+        f.readline()  # 忽略首行
         for line in f:
             cols = line.strip().split(',')
-            sql = ("INSERT INTO train_user SET user_id=%s, item_id=%s,"
+            sql = ("INSERT INTO train_user_new SET user_id=%s, item_id=%s,"
                    "behavior_type=%s, user_geohash='%s', item_category=%s,"
                    "time=%s;" % (cols[0], cols[1], cols[2], cols[3], cols[4],
                                  arrow.get(cols[5], 'YYYY-MM-DD HH').timestamp)
-                   )
+            )
             cursor.execute(sql)
             counter += 1
             if counter % 5000 == 0:
@@ -53,6 +47,7 @@ def insert_train_user_2table(connect,
     cursor.close()
 
 
+@Timer
 def insert_train_item_2table(connect,
                              fin='tianchi_mobile_recommend_train_item.csv'):
     """
@@ -67,10 +62,10 @@ def insert_train_item_2table(connect,
     cursor = connect.cursor()
     counter = 0
     with open(fin, 'rb') as f:
-        f.readline()    # 忽略首行
+        f.readline()  # 忽略首行
         for line in f:
             cols = line.strip().split(',')
-            sql = ("INSERT INTO train_item SET item_id=%s, item_geohash='%s',"
+            sql = ("INSERT INTO train_item_new SET item_id=%s, item_geohash='%s',"
                    "item_category=%s" % (cols[0], cols[1], cols[2]))
             cursor.execute(sql)
             counter += 1
@@ -142,8 +137,8 @@ if __name__ == '__main__':
                               passwd='tianchi_data',
                               db='tianchi')
 
-#    insert_train_user_2table(connect)
-#    output(connect)
-#    insert_train_item_2table(connect)
-    output_user_view_item_num(connect)
+    # insert_train_user_2table(connect, fin=r'D:\tianchidata\tianchi_mobile_recommend_train_user.csv')
+    # output(connect)
+    # insert_train_item_2table(connect, fin=r'D:\tianchidata\tianchi_mobile_recommend_train_item.csv')
+    # output_user_view_item_num(connect)
     connect.close()
