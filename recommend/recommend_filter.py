@@ -202,13 +202,18 @@ def filter_with_category_popularity(connect, train_user_connect, f_recommend, f_
                 recommend_dict[cols[0]].append(cols[1])
             else:
                 recommend_dict[cols[0]] = [cols[1]]
+    logger.debug('完成根据推荐文件生成第一步, len:%s' % (len(recommend_dict)))
     # 分两步生成最后的dict是为了减少mysql查询数
     recommend_tuple_dict = {}  # {(u_id1,i_id1):(u_last_category, id1_category), (u_id1, i_id2):(u_last_category, id2_category)}
+    user_counter = 0
     for (u_id, i_ids) in recommend_dict.iteritems():
         sql = 'SELECT item_category FROM train_user WHERE user_id=%s and time<%s ORDER BY time DESC limit 1;' % (u_id, stoptime_timestamp)
         cursor.execute(sql)
         result = cursor.fetchall()
         user_last_category = result[0][0]
+        user_counter += 1
+        if user_counter % 200 == 0:
+            logger.debug('No.%s user, user_id=%s, last_item_category=%s' % (user_counter, u_id, user_last_category))
         for i_id in i_ids:
             sql = 'SELECT item_category FROM train_item WHERE item_id=%s;' % (i_id)
             cursor.execute(sql)
@@ -272,6 +277,8 @@ if __name__ == '__main__':
                               user='tianchi_data',
                               passwd='tianchi_data',
                               db='tianchi')
-    f_recommend = '%s/predict_1219/RandomForest_recommend_intersect.csv' % (data_path)
+    #f_recommend = '%s/predict_1219/RandomForest_recommend_intersect.csv' % (data_path)
+    #filter_with_category_popularity(connect, train_user, f_recommend, f_category_relationship, '2014-12-19')
+    f_recommend = '%s/test_1205/RandomForest_recommend_intersect.csv' % (data_path)
     f_category_relationship = '%s/relationship_reduced.csv' % (data_path)
-    filter_with_category_popularity(connect, train_user, f_recommend, f_category_relationship, '2014-12-19')
+    filter_with_category_popularity(connect, train_user, f_recommend, f_category_relationship, '2014-12-06')
