@@ -292,7 +292,7 @@ def filter_with_category_popularity(connect, train_user_connect, f_recommend, f_
     with open(f_output, 'w') as fout:
         in_counter = 0
         random_counter = 0
-        fout.wirte('user_id,item_id\n')
+        fout.write('user_id,item_id\n')
         for ((user_id, item_id), category_tuple) in recommend_tuple_dict.iteritems():
             if category_tuple in relationship_set:
                 in_counter += 1
