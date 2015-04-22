@@ -32,7 +32,7 @@ MAX_BOUGHT_BEHAVIOR_COUNT = 120236
 data_dict = {'item_data': {}, 'user_data': {}}
 
 
-def cal_item_popularity(mongo_train_user_collection, item_id, stoptime_str='2014-12-19 00'):
+def cal_item_popularity(mongo_train_user_collection, item_id, timerange=('2014-12-12', '2014-12-19')):
     """
     计算商品热门度，由于被除数都一样所以不再除以被购买商品总数，改为count的sigmoid形式
 
@@ -46,14 +46,16 @@ def cal_item_popularity(mongo_train_user_collection, item_id, stoptime_str='2014
     else:
         # mongodb = MongodbUtils(db_address, 27017)
         train_user = mongo_train_user_collection
-        stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
-        bought_count = train_user.find({'item_id': item_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
+        starttime = datetime.strptime(str(timerange[0]), '%Y-%m-%d')
+        stoptime = datetime.strptime(str(timerange[1]), '%Y-%m-%d')
+        bought_count = train_user.find(
+            {'item_id': item_id, 'behavior_type': '4', "time": {'$gt': starttime, "$lt": stoptime}}).count()
         popularity = 1 / (1 + math.e ** (-bought_count)) - 0.5
         data_dict['item_data'][item_id] = {'popularity': popularity}
         return popularity
 
 
-def cal_user_desire(mongo_train_user_collection, user_id, stoptime_str='2014-12-19 00'):
+def cal_user_desire(mongo_train_user_collection, user_id, timerange=('2014-12-12', '2014-12-19')):
     """
     计算用户购买欲
     :param user_id:
@@ -68,16 +70,18 @@ def cal_user_desire(mongo_train_user_collection, user_id, stoptime_str='2014-12-
         return float(bought_count) / float(max_count)
     else:
         train_user = mongo_train_user_collection
-        stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
+        starttime = datetime.strptime(str(timerange[0]), '%Y-%m-%d')
+        stoptime = datetime.strptime(str(timerange[1]), '%Y-%m-%d')
         max_count = train_user.find({"user_id": user_id, "time": {"$lt": stoptime}}).count()
-        bought_count = train_user.find({"user_id": user_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
+        bought_count = train_user.find(
+            {"user_id": user_id, 'behavior_type': '4', "time": {'$gt': starttime, "$lt": stoptime}}).count()
         data_dict['user_data'][user_id] = {'max_count': max_count, 'bought_count': bought_count}
         if max_count == 0:
             return 0
         return float(bought_count) / float(max_count)
 
 
-def cal_useritem_behavior_rate(mongo_train_user_collection, user_id, item_id, stoptime_str='2014-12-19 00'):
+def cal_useritem_behavior_rate(mongo_train_user_collection, user_id, item_id, timerange=('2014-12-12', '2014-12-19')):
     """
     计算指定用户对指定商品的操作数占该用户总操作数的比重
     :param user_id:
@@ -88,15 +92,17 @@ def cal_useritem_behavior_rate(mongo_train_user_collection, user_id, item_id, st
 
     # mongodb = MongodbUtils(db_address, 27017)
     train_user = mongo_train_user_collection
-    stoptime = datetime.strptime(str(stoptime_str), '%Y-%m-%d %H')
+    starttime = datetime.strptime(str(timerange[0]), '%Y-%m-%d')
+    stoptime = datetime.strptime(str(timerange[1]), '%Y-%m-%d')
     if data_dict['user_data'].has_key(user_id):
         max_count = data_dict['user_data'][user_id]['max_count']
     else:
         max_count = train_user.find({"user_id": user_id, "time": {"$lt": stoptime}}).count()
-        bought_count = train_user.find({"user_id": user_id, 'behavior_type': '4', "time": {"$lt": stoptime}}).count()
+        bought_count = train_user.find(
+            {"user_id": user_id, 'behavior_type': '4', "time": {'$gt': starttime, "$lt": stoptime}}).count()
         data_dict['user_data'][user_id] = {'max_count': max_count, 'bought_count': bought_count}
     item_behavior_count = train_user.find(
-        {"user_id": user_id, "item_id": item_id, "time": {"$lt": stoptime}}).count()
+        {"user_id": user_id, "item_id": item_id, "time": {'$gt': starttime, "$lt": stoptime}}).count()
     if max_count == 0:
         return 0
     return float(item_behavior_count) / float(max_count)
@@ -192,7 +198,7 @@ def cal_user_behavior(connect,
 
 @Timer
 def cal_vecvalues_tail(mongo_train_user_collection, fin_path='../data/train_set.csv',
-                       fout_path='../data/vecvalues_tail.csv', stoptime='2014-12-19'):
+                       fout_path='../data/vecvalues_tail.csv', timerange=('2014-12-12', '2014-12-19')):
     """
     计算后三维的向量，需要mongodb支持
     :param fin_path:样本集csv路径
@@ -206,16 +212,16 @@ def cal_vecvalues_tail(mongo_train_user_collection, fin_path='../data/train_set.
     fout = open(fout_path, 'w')
     fout.write('tag,popularity,desire,behavior_rate\n')
     count = 0
-    stoptime += ' 00'
+    # stoptime += ' 00'
     for line in fin:
         line = line.replace('\n', '')
         data = line.split(',')
         user_id = data[0]
         item_id = data[1]
         tag = data[2]
-        popularity = cal_item_popularity(mongo_train_user_collection, item_id, stoptime_str=stoptime)
-        desire = cal_user_desire(mongo_train_user_collection, user_id, stoptime_str=stoptime)
-        behavior_rate = cal_useritem_behavior_rate(mongo_train_user_collection, user_id, item_id, stoptime_str=stoptime)
+        popularity = cal_item_popularity(mongo_train_user_collection, item_id, timerange=timerange)
+        desire = cal_user_desire(mongo_train_user_collection, user_id, timerange=timerange)
+        behavior_rate = cal_useritem_behavior_rate(mongo_train_user_collection, user_id, item_id, timerange=timerange)
         datastr = '%s,%s,%s,%s\n' % (tag, popularity, desire, behavior_rate)
         # datastr = tag + ',' + str(popularity) + ',' + str(desire) + ',' + str(behavior_rate) + '\n'
         fout.write(datastr)
@@ -295,10 +301,10 @@ def get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'),
     # predict_set_path = '%s/temp/predict_set.csv' % (data_path)
     generate_userset.generate_predict_set(connect, timerange, predict_set_path)
     # predict_vectail_path = '%s/temp/predict_vectail.csv' % (data_path)
-    stoptime = timerange[1]
-    cal_vecvalues_tail(train_user, predict_set_path, predict_vectail_path, stoptime)
+    # stoptime = timerange[1]
+    cal_vecvalues_tail(train_user, predict_set_path, predict_vectail_path, timerange)
     predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
-    cal_user_behavior(connect, ('2014-11-17', stoptime), predict_set_path)
+    cal_user_behavior(connect, timerange, predict_set_path)
     combine_data(predict_vecbehavior_path, predict_vectail_path, csv_output_path, svm_output_path)
 
 
@@ -329,10 +335,10 @@ def get_train_vecdata(train_set_path='%s/train/train_set.csv' % data_path,
     generate_userset.generate_train_set(connect, timerange, timerange,
                                         train_set_path)
     vectail_path = train_set_path.replace('.csv', '_vectail.csv')
-    cal_vecvalues_tail(train_user, train_set_path, vectail_path, timerange[0])
+    cal_vecvalues_tail(train_user, train_set_path, vectail_path, timerange)
     # predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
     cal_user_behavior_path = train_set_path.replace('.csv', '_calUserBehavior.csv')
-    cal_user_behavior(connect, ('2014-11-17', timerange[0]), train_set_path)
+    cal_user_behavior(connect, timerange, train_set_path)
     combine_data(cal_user_behavior_path,
                  vectail_path,
                  combined_out_path,
@@ -354,17 +360,18 @@ if __name__ == '__main__':
 
     # 生成测试集数据
     get_predict_vecdata(timerange=('2014-12-01', '2014-12-05'),
-                        predict_set_path='%s/test_1205/test_1205_set.csv'% data_path,
-                        predict_vectail_path='%s/test_1205/test_1205_vectail.csv'% data_path,
-                        csv_output_path='%s/test_1205/test_1205_combined.csv'% data_path,
-                        svm_output_path='%s/test_1205/test_1205_svmdata.dat'% data_path)
+                        predict_set_path='%s/test_1205/test_1205_set.csv' % data_path,
+                        predict_vectail_path='%s/test_1205/test_1205_vectail.csv' % data_path,
+                        csv_output_path='%s/test_1205/test_1205_combined.csv' % data_path,
+                        svm_output_path='%s/test_1205/test_1205_svmdata.dat' % data_path)
 
     # **************************************************
 
     # 生成训练集数据
     get_train_vecdata(train_set_path='%s/train_1205/train_set_1205.csv' % data_path,
                       combined_out_path='%s/train_1205/combined_out_1205.csv' % data_path,
-                      svmdata_out_path='%s/train_1205/svmdata_1205.dat' % data_path,timerange=('2014-12-04','2014-12-05') )
+                      svmdata_out_path='%s/train_1205/svmdata_1205.dat' % data_path,
+                      timerange=('2014-12-04', '2014-12-05'))
 
 
 

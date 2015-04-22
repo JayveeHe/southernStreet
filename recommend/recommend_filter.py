@@ -46,20 +46,27 @@ class PopularityInCategory:
                                                       'behavior_type': '4',
                                                       'time': {'$lt': self.stoptime}}).count()
             # self.item_bought_dict[item_id] = item_bought_count
-            if self.category_bought_dict.has_key(category_id):
-                bought_max_count = self.category_bought_dict[category_id]
-            else:
-                bought_max_count = self.train_user.find({'item_category': category_id,
-                                                         'behavior_type': '4',
-                                                         'time': {'$lt': self.stoptime}}).count()
+            if item_bought_count != 0:
+                if self.category_bought_dict.has_key(category_id):
+                    bought_max_count = self.category_bought_dict[category_id]
+                else:
+                    bought_max_count = self.train_user.find({'item_category': category_id,
+                                                             'behavior_type': '4',
+                                                             'time': {'$lt': self.stoptime}}).count()
+                    # bought_max_count = temp.count()
+                    # k = len(temp.distinct('item_id'))
                 self.category_bought_dict[category_id] = bought_max_count
-            if bought_max_count != 0:
-                popularity_in_category = float(item_bought_count) / bought_max_count
-                logger.debug('item ' + item_id + ' popularity_in_category = ' + str(popularity_in_category))
-                self.result_dict[item_id] = popularity_in_category
-                return popularity_in_category
+                if bought_max_count != 0:
+                    popularity_in_category = float(item_bought_count) / bought_max_count
+                    logger.debug('item ' + item_id + ' popularity_in_category = ' + str(popularity_in_category))
+                    self.result_dict[item_id] = popularity_in_category
+                    return popularity_in_category
+                else:
+                    self.result_dict[item_id] = 0.0
+                    logger.debug('item ' + item_id + ' popularity_in_category = ' + str(0.0))
+                    return 0.0
             else:
-                self.result_dict[item_id] = 0.0
+                logger.debug('item ' + item_id + ' popularity_in_category = ' + str(0.0))
                 return 0.0
 
 
@@ -316,6 +323,7 @@ def filter_with_mongodb(train_user_connect, f_recommend_path, f_category_relatio
     """
     import pymongo
     import random
+    import math
 
     logger.info('start filter_with_mongoDB')
     popularity_calculator = PopularityInCategory(train_user_connect, time_range[1])
@@ -362,7 +370,6 @@ def filter_with_mongodb(train_user_connect, f_recommend_path, f_category_relatio
                                                        '$gt': time_range[0],
                                                        '$lt': time_range[1]}}).sort('time',
                                                                                     pymongo.DESCENDING)
-
         item_category_dict = {}
         item_popularity_in_category_dict = {}
         last_buy = next(last_buy_cursor, None)
@@ -389,12 +396,15 @@ def filter_with_mongodb(train_user_connect, f_recommend_path, f_category_relatio
                 else:
                     item_popularity = popularity_calculator.get_popularity_in_category(i_id)
                     item_popularity_in_category_dict[i_id] = item_popularity
+
+                item_popularity = 1 / (1 + math.e ** (item_popularity +1))
+                logger.debug('random prob = %s' % item_popularity)
                 if random.random() <= item_popularity:
                     fout.write('%s,%s\n' % (u_id, i_id))
                     result.append((u_id, i_id))
                     new_count += 1
 
-            if old_count % 500 == 0:  # logger哨兵
+            if old_count % 10 == 0:  # logger哨兵
                 logger.debug('No.%s origin recommend filtered' % old_count)
     logger.info('done! origin recommend num is %s, current recommend num is %s\nresult output path: %s' % (
         old_count, new_count, fout_path))
@@ -433,7 +443,7 @@ if __name__ == '__main__':
     # f_recommend = '%s/predict_1219/RandomForest_recommend_intersect.csv' % (data_path)
     # filter_with_category_popularity(connect, train_user, f_recommend, f_category_relationship, '2014-12-19')
     f_recommend = '%s/test_1205/RandomForest_recommend_intersect.csv' % (data_path)
-    f_category_relationship = '%s/relationship_reduced_linkcount_above20.csv' % (data_path)
+    f_category_relationship = '%s/relationship_1.csv' % (data_path)
     result_path = f_recommend.replace('.csv', '_mongodb_filter.csv')
     # filter_with_category_popularity(connect, train_user, f_recommend, f_category_relationship, '2014-12-06')
     filter_with_mongodb(train_user, f_recommend, f_category_relationship, fout_path=result_path,
