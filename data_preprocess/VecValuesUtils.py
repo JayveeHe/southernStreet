@@ -277,20 +277,24 @@ def combine_data(userbehavior_filepath='%s/train_set_calUserBehavior.csv' % (dat
 
 
 @Timer
-def get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'),
+def get_predict_vecdata(set_timerange=('2014-12-18', '2014-12-19'),
+                        behavior_timerange=('2014-12-12', '2014-12-19'),
                         predict_set_path='%s/predict/predict_set.csv' % (data_path),
                         predict_vectail_path='%s/predict/predict_vectail.csv' % (data_path),
                         csv_output_path='%s/predict/combined_vec_data.csv' % (data_path),
                         svm_output_path='%s/predict/svmdata.dat' % (data_path)):
     """
     生成预测集，需要制定时间范围与各输出路径
+    :param set_timerange: 潜在购买商品的时间范围
+    :param behavior_timerange: 计算向量值时的时间范围
     """
 
     from data_preprocess import generate_userset
     import MySQLdb
     from data_preprocess.MongoDB_Utils import MongodbUtils
 
-    logger.info('start get_predict_vecdata, timerange=%s to %s' % (timerange[0], timerange[1]))
+    logger.info('start get_predict_vecdata, set_timerange=%s to %s,  behavior_timerange = %s to %s' % (
+        set_timerange[0], set_timerange[1], behavior_timerange[0], behavior_timerange[1]))
     connect = MySQLdb.connect(host='127.0.0.1',
                               user='tianchi_data',
                               passwd='tianchi_data',
@@ -299,12 +303,12 @@ def get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'),
     mongo_utils = MongodbUtils(db_address, 27017)
     train_user = mongo_utils.get_db().train_user_new
     # predict_set_path = '%s/temp/predict_set.csv' % (data_path)
-    generate_userset.generate_predict_set(connect, timerange, predict_set_path)
+    generate_userset.generate_predict_set(connect, set_timerange, predict_set_path)
     # predict_vectail_path = '%s/temp/predict_vectail.csv' % (data_path)
     # stoptime = timerange[1]
-    cal_vecvalues_tail(train_user, predict_set_path, predict_vectail_path, timerange)
+    cal_vecvalues_tail(train_user, predict_set_path, predict_vectail_path, behavior_timerange)
     predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
-    cal_user_behavior(connect, timerange, predict_set_path)
+    cal_user_behavior(connect, behavior_timerange, predict_set_path)
     combine_data(predict_vecbehavior_path, predict_vectail_path, csv_output_path, svm_output_path)
 
 
@@ -312,17 +316,17 @@ def get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'),
 def get_train_vecdata(train_set_path='%s/train/train_set.csv' % data_path,
                       combined_out_path='%s/train/combined_out.csv' % data_path,
                       svmdata_out_path='%s/train/svmdata.dat' % data_path,
-                      timerange=('2014-12-18', '2014-12-19')):
+                      set_timerange=('2014-12-18', '2014-12-19'),
+                      behavior_timerange=('2014-12-12', '2014-12-19')):
     """
     生成训练数据集
-    :param timerange: 所训练的模型需要预测的时间范围
     """
 
     import MySQLdb
     from data_preprocess import generate_userset
     from data_preprocess.MongoDB_Utils import MongodbUtils
 
-    logger.info('start get_train_vecdata, timerange=%s to %s' % (timerange[0], timerange[1]))
+    logger.info('start get_train_vecdata, timerange=%s to %s' % (set_timerange[0], set_timerange[1]))
     connect = MySQLdb.connect(host='10.108.192.119',
                               user='tianchi_data',
                               passwd='tianchi_data',
@@ -332,13 +336,13 @@ def get_train_vecdata(train_set_path='%s/train/train_set.csv' % data_path,
     train_user = mongo_utils.get_db().train_user
     # generate_userset.generate_train_set(connect, ('2014-12-18', '2014-12-19'), ('2014-12-18', '2014-12-19'),
     # r'../data/train/train_set_1819.csv')
-    generate_userset.generate_train_set(connect, timerange, timerange,
+    generate_userset.generate_train_set(connect, set_timerange, set_timerange,
                                         train_set_path)
     vectail_path = train_set_path.replace('.csv', '_vectail.csv')
-    cal_vecvalues_tail(train_user, train_set_path, vectail_path, timerange)
+    cal_vecvalues_tail(train_user, train_set_path, vectail_path, behavior_timerange)
     # predict_vecbehavior_path = predict_set_path.replace('.csv', '_calUserBehavior.csv')
     cal_user_behavior_path = train_set_path.replace('.csv', '_calUserBehavior.csv')
-    cal_user_behavior(connect, timerange, train_set_path)
+    cal_user_behavior(connect, behavior_timerange, train_set_path)
     combine_data(cal_user_behavior_path,
                  vectail_path,
                  combined_out_path,
@@ -359,19 +363,34 @@ if __name__ == '__main__':
     # **************************************************
 
     # 生成测试集数据
-    get_predict_vecdata(timerange=('2014-12-01', '2014-12-05'),
-                        predict_set_path='%s/test_1205/test_1205_set.csv' % data_path,
-                        predict_vectail_path='%s/test_1205/test_1205_vectail.csv' % data_path,
-                        csv_output_path='%s/test_1205/test_1205_combined.csv' % data_path,
-                        svm_output_path='%s/test_1205/test_1205_svmdata.dat' % data_path)
+    test_path = '%s/test_1205_timerange' % data_path
+    get_predict_vecdata(set_timerange=('2014-12-04', '2014-12-05'),
+                        behavior_timerange=('2014-12-01', '2014-12-05'),
+                        predict_set_path='%s/test_1205_set.csv' % test_path,
+                        predict_vectail_path='%s/test_1205_vectail.csv' % test_path,
+                        csv_output_path='%s/test_1205_combined.csv' % test_path,
+                        svm_output_path='%s/test_1205_svmdata.dat' % test_path)
+    # get_predict_vecdata(set_timerange=('2014-12-04', '2014-12-05'),
+    # behavior_timerange=('2014-12-01', '2014-12-05'),
+    # predict_set_path='%s/test_1205/test_1205_set.csv' % data_path,
+    # predict_vectail_path='%s/test_1205/test_1205_vectail.csv' % data_path,
+    # csv_output_path='%s/test_1205/test_1205_combined.csv' % data_path,
+    # svm_output_path='%s/test_1205/test_1205_svmdata.dat' % data_path)
 
     # **************************************************
 
     # 生成训练集数据
-    get_train_vecdata(train_set_path='%s/train_1205/train_set_1205.csv' % data_path,
-                      combined_out_path='%s/train_1205/combined_out_1205.csv' % data_path,
-                      svmdata_out_path='%s/train_1205/svmdata_1205.dat' % data_path,
-                      timerange=('2014-12-04', '2014-12-05'))
+    train_path = '%s/train_1205_timerange' % data_path
+    get_train_vecdata(set_timerange=('2014-12-04', '2014-12-05'),
+                      behavior_timerange=('2014-12-01', '2014-12-05'),
+                      train_set_path='%s/train_set_1205.csv' % train_path,
+                      combined_out_path='%s/combined_out_1205.csv' % train_path,
+                      svmdata_out_path='%s/svmdata_1205.dat' % data_path)
+    # get_train_vecdata(set_timerange=('2014-12-04', '2014-12-05'),
+    #                   behavior_timerange=('2014-12-01', '2014-12-05'),
+    #                   train_set_path='%s/train_1205/train_set_1205.csv' % data_path,
+    #                   combined_out_path='%s/train_1205/combined_out_1205.csv' % data_path,
+    #                   svmdata_out_path='%s/train_1205/svmdata_1205.dat' % data_path)
 
 
 

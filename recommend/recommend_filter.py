@@ -99,9 +99,10 @@ def cal_popularity_in_category(item_id, stoptime_str, train_user_connect):
 
 
 @Timer
-def find_category_relationship(train_user_connect, train_item_connect, json_output_path='../data/relationData_new.json',
-                               csv_output_path='../data/relationData_new.csv',
-                               time_window=2):
+def find_category_relationship(train_user_connect, train_item_connect,
+                               json_output_path=r'%s/relationData_new.json' % data_path,
+                               csv_output_path=r'%s/relationData_new.csv' % data_path,
+                               time_window=1):
     """
     计算商品子集中所有类别的承接关系
     :param train_user_connect:
@@ -174,7 +175,7 @@ def find_category_relationship(train_user_connect, train_item_connect, json_outp
         for target in relationDict.get(source):
             csvout.write('%s,%s,%s\n' % (source, target, relationDict[source][target]))
     logger.info('find_category_relationship done, json_output_path=%s\tcsv_output_path=%s' % (
-        json_output_path, csv_output_path))
+    json_output_path, csv_output_path))
 
 
 @Timer
@@ -190,7 +191,6 @@ def generate_from_popularity_in_category(f_recommend, stoptime_str, train_user_c
         f_output: fout, 最终输出结果
     """
     import random
-
     category_popularity_item = dict()  # key:item_id, value:类内流行度
     category_popularity = dict()  # key:(user_id,item_id), value:类内流行度
 
@@ -206,7 +206,7 @@ def generate_from_popularity_in_category(f_recommend, stoptime_str, train_user_c
 
     # 最终结果由类内排名前%25的 加上随机的25%
     sorted_result = sorted(category_popularity.iteritems(), key=lambda d: d[1], reverse=True)
-    index_slice = int(0.25 * len(sorted_result))
+    index_slice = int(0.25*len(sorted_result))
     front_25 = sorted_result[:index_slice]
     last_75 = sorted_result[index_slice:]
     random.shuffle(last_75)
@@ -247,7 +247,7 @@ def filter_with_category_popularity(connect, train_user_connect, f_recommend, f_
     cursor = connect.cursor()
     f_output = f_recommend.replace('.csv', '_filter.csv')
     logger.debug('Start filter recommend result..')
-
+    
     # 根据推荐文件生成
     stoptime_timestamp = arrow.get(stoptime_str).timestamp
     recommend_dict = {}  # {u_id1:[i_id1,i_id2], u_id2:[i_id3,i_id4]}
@@ -264,8 +264,7 @@ def filter_with_category_popularity(connect, train_user_connect, f_recommend, f_
     recommend_tuple_dict = {}  # {(u_id1,i_id1):(u_last_category, id1_category), (u_id1, i_id2):(u_last_category, id2_category)}
     user_counter = 0
     for (u_id, i_ids) in recommend_dict.iteritems():
-        sql = 'SELECT item_category FROM train_user WHERE user_id=%s and time<%s ORDER BY time DESC limit 1;' % (
-            u_id, stoptime_timestamp)
+        sql = 'SELECT item_category FROM train_user WHERE user_id=%s and time<%s ORDER BY time DESC limit 1;' % (u_id, stoptime_timestamp)
         cursor.execute(sql)
         result = cursor.fetchall()
         user_last_category = result[0][0]
@@ -282,7 +281,7 @@ def filter_with_category_popularity(connect, train_user_connect, f_recommend, f_
     # 根据承接关系文件生成
     relationship_set = set()
     with open(f_category_relationship, 'r') as fin:
-        fin.readline()
+        fin.readline() 
         for line in fin:
             cols = line.strip().split(',')
             relationship_set.add((cols[0], cols[1]))
@@ -304,8 +303,8 @@ def filter_with_category_popularity(connect, train_user_connect, f_recommend, f_
                     logger.debug('NO.%s random pick, [%s,%s]' % (random_counter, user_id, item_id))
 
     logger.info('对推荐结果的筛选完成，结果路径:%s' % ())
-    logger.info('筛选前%s, 筛选后%s. 其中在承接关系的有%s, 随机挑选的有%s' % (
-        len(recommend_tuple_dict), in_counter + random_counter, in_counter, random_counter))
+    logger.info('筛选前%s, 筛选后%s. 其中在承接关系的有%s, 随机挑选的有%s' %(len(recommend_tuple_dict), in_counter+random_counter, in_counter, random_counter))
+        
 
 
 @Timer
@@ -419,12 +418,12 @@ if __name__ == '__main__':
     mongo_utils = MongodbUtils(db_address, 27017)
     train_user = mongo_utils.get_db().train_user
     train_item = mongo_utils.get_db().train_item
-    # train_user = mongo_utils.get_db().train_user_new
-    # train_item = mongo_utils.get_db().train_item_new
+    #train_user = mongo_utils.get_db().train_user_new
+    #train_item = mongo_utils.get_db().train_item_new
 
-    # find_category_relationship(train_user, train_item, '%s/relationDict.json' % data_path, 3)
-    # f_recommend = '%s/test_1206/RandomForest_recommend_intersect.csv' % (data_path)
-    # generate_from_popularity_in_category(f_recommend, '2014-12-06', train_user)
+    #find_category_relationship(train_user, train_item, '%s/relationDict.json' % data_path, 3)
+    #f_recommend = '%s/test_1206/RandomForest_recommend_intersect.csv' % (data_path)
+    #generate_from_popularity_in_category(f_recommend, '2014-12-06', train_user)
 
     """
     # find_category_relationship(train_user, train_item, json_output_path='%s/relationDict.json' % data_path,
