@@ -301,7 +301,7 @@ def get_predict_vecdata(set_timerange=('2014-12-18', '2014-12-19'),
                               db='tianchi')
 
     mongo_utils = MongodbUtils(db_address, 27017)
-    train_user = mongo_utils.get_db().train_user_new
+    train_user = mongo_utils.get_db().train_user
     # predict_set_path = '%s/temp/predict_set.csv' % (data_path)
     generate_userset.generate_predict_set(connect, set_timerange, predict_set_path)
     # predict_vectail_path = '%s/temp/predict_vectail.csv' % (data_path)
