@@ -295,7 +295,7 @@ def get_predict_vecdata(set_timerange=('2014-12-18', '2014-12-19'),
 
     logger.info('start get_predict_vecdata, set_timerange=%s to %s,  behavior_timerange = %s to %s' % (
         set_timerange[0], set_timerange[1], behavior_timerange[0], behavior_timerange[1]))
-    connect = MySQLdb.connect(host='127.0.0.1',
+    connect = MySQLdb.connect(host='10.108.192.119',
                               user='tianchi_data',
                               passwd='tianchi_data',
                               db='tianchi')
@@ -356,16 +356,21 @@ if __name__ == '__main__':
 
     # **************************************************
 
-    # # 生成预测集数据
-    # get_predict_vecdata(timerange=('2014-12-15', '2014-12-19'), predict_set_path='../data/predict/predict_set.csv',
-    # predict_vectail_path='../data/predict/predict_vectail.csv')
+    # 生成预测集数据
+    predict_path = '%s/predict_1219_timerange' % data_path
+    get_predict_vecdata(set_timerange=('2014-12-18', '2014-12-19'),
+                        behavior_timerange=('2014-12-14', '2014-12-19'),
+                        predict_set_path='%s/predict_1219_set.csv' % predict_path,
+                        predict_vectail_path='%s/predict_1219_vectail.csv' % predict_path,
+                        csv_output_path='%s/predict_1219_combined.csv' % predict_path,
+                        svm_output_path='%s/predict_1219_svmdata.dat' % predict_path)
 
     # **************************************************
 
     # 生成测试集数据
     test_path = '%s/test_1205_timerange' % data_path
     get_predict_vecdata(set_timerange=('2014-12-04', '2014-12-05'),
-                        behavior_timerange=('2014-12-01', '2014-12-05'),
+                        behavior_timerange=('2014-11-30', '2014-12-05'),
                         predict_set_path='%s/test_1205_set.csv' % test_path,
                         predict_vectail_path='%s/test_1205_vectail.csv' % test_path,
                         csv_output_path='%s/test_1205_combined.csv' % test_path,
@@ -379,13 +384,22 @@ if __name__ == '__main__':
 
     # **************************************************
 
-    # 生成训练集数据
+    # 生成测试用训练集数据
     train_path = '%s/train_1205_timerange' % data_path
     get_train_vecdata(set_timerange=('2014-12-04', '2014-12-05'),
-                      behavior_timerange=('2014-12-01', '2014-12-05'),
+                      behavior_timerange=('2014-11-29', '2014-12-04'),
                       train_set_path='%s/train_set_1205.csv' % train_path,
                       combined_out_path='%s/combined_out_1205.csv' % train_path,
                       svmdata_out_path='%s/svmdata_1205.dat' % data_path)
+
+    # 生成预测用训练集数据
+    train_path = '%s/train_1219_timerange' % data_path
+    get_train_vecdata(set_timerange=('2014-12-18', '2014-12-19'),
+                      behavior_timerange=('2014-12-13', '2014-12-18'),
+                      train_set_path='%s/train_set_1219.csv' % train_path,
+                      combined_out_path='%s/combined_out_1219.csv' % train_path,
+                      svmdata_out_path='%s/svmdata_1219.dat' % data_path)
+
     # get_train_vecdata(set_timerange=('2014-12-04', '2014-12-05'),
     #                   behavior_timerange=('2014-12-01', '2014-12-05'),
     #                   train_set_path='%s/train_1205/train_set_1205.csv' % data_path,
