@@ -34,8 +34,8 @@ def train(clf, f_train_set):
 
     # 简单验证
     #logger.debug('Start simple cross-validate.')
-    scores = cross_validation.cross_val_score(clf, X, y, cv=5)
-    logger.info('Classifier simple cross-validated(use train set) scores ars %s' % (scores))
+    #scores = cross_validation.cross_val_score(clf, X, y, cv=5)
+    #logger.info('Classifier simple cross-validated(use train set) scores ars %s' % (scores))
 
     # 训练
     clf.fit(X, y)
@@ -177,11 +177,13 @@ if __name__ == '__main__':
 
     """
     # for self test
-    test_path = '%s/test_1206' % (data_path)
+    test_path = '%s/test_1205_timerange' % (data_path)
     f_predict_vect = '%s/test_combined.csv' % (test_path)
     f_predict_id_set = '%s/test_set.csv' % (test_path)
+    f_train_set = '%s/train_1205_timerange/combined_out.csv' % (data_path)
     f_real_buy_intersect_set = '%s/real_buy_intersect.csv' % (test_path)
 
+    """
     # L2范式线性回归
     from sklearn.linear_model import LogisticRegression
     clf = LogisticRegression(C=1000, penalty='l2', tol=0.01)
@@ -191,7 +193,6 @@ if __name__ == '__main__':
     test(f_recommend_set_intersect, f_real_buy_intersect_set)
 
 
-    """
     # Randomized Parameter Optimization
     from sklearn import svm, grid_search
     randomized_parameter = {'kernel':['rbf'], 'C': scipy.stats.expon(scale=100), 'gamma': scipy.stats.expon(scale=.1)}
@@ -202,7 +203,6 @@ if __name__ == '__main__':
     test(f_recommend_set_intersect, f_real_buy_intersect_set)
     """
 
-    
     # 随机森林
     from sklearn.ensemble import RandomForestClassifier
     clf = RandomForestClassifier(max_depth=5, n_estimators=10, max_features=1)
@@ -216,3 +216,4 @@ if __name__ == '__main__':
     f_real_buy_intersect_set = '%s/real_buy_intersect.csv' % (test_path)
 
     test('%s/RandomForest_recommend_intersect_categoryPopularity.csv'%(test_path), f_real_buy_intersect_set)
+    """
